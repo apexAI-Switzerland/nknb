@@ -2,137 +2,123 @@
 
 import { createClient } from '@supabase/supabase-js'
 
-// Types for the database tables based on the exact schema
+// Create a single supabase client for interacting with your database
+export const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
+)
+
+// New type definitions based on actual database schema
 export interface NutritionalValues {
-  kJ: string
-  kcal: string
-  Fett: string
-  "davon gesättigte Fettsäuren": string
-  "davon einfach ungesättigte Fettsäuren": string
-  "davon mehrfach ungesättigte Fettsäuren": string
-  Kohlenhydrate: string
-  "davon Zucker": string
-  Eiweiss: string
-  Ballaststoffe: string
-  Salz: string
+  kJ?: string;
+  kcal?: string;
+  Fett?: string;
+  'davon gesättigte Fettsäuren'?: string;
+  'davon einfach ungesättigte Fettsäuren'?: string;
+  'davon mehrfach ungesättigte Fettsäuren'?: string;
+  Kohlenhydrate?: string;
+  'davon Zucker'?: string;
+  Eiweiss?: string;
+  Ballaststoffe?: string;
+  Salz?: string;
+  'Vitamin A'?: number | string;
+  'B-Carotin (Provitamin A)'?: string;
+  'Vitamin D'?: string;
+  'Vitamin E'?: number | string;
+  'Vitamin C'?: number | string;
+  'Vitamin K'?: number | string;
+  'Vitamin B1 (Thiamin)'?: number | string;
+  'Vitamin B2 (Riboflavin)'?: number | string;
+  'Vitamin B3  Niacin (Vitamin PP)'?: number | string;
+  'Vitamin B6'?: number | string;
+  'Folsäure/Folacin'?: number | string;
+  'Vitamin B12'?: string;
+  Biotin?: number | string;
+  Pantothensäure?: number | string;
+  Calcium?: number | string;
+  Phosphor?: number | string;
+  Eisen?: number | string;
+  Magnesium?: number | string;
+  Zink?: number | string;
+  Jod?: string;
+  Selen?: string;
+  Kupfer?: string;
+  Mangan?: string;
+  Chrom?: string;
+  Molybdän?: string;
+  Fluorid?: string;
+  Kalium?: number | string;
+  Chlorid?: string;
+  Cholin?: string;
+  Betain?: string;
+  Lycopin?: string;
+  'mehrfachungesättigte Fettsäuren (n-6)'?: string;
+  'Alpha-Linolensäure (n-3) Omega3'?: string;
+  'Summe von Eicosapentaensäure und  Docosahexaensäure (EPA + DH'?: string;
+  'Linolsäure (Omega-6-Fettsäuren)'?: string;
+  [key: string]: string | number | undefined;
 }
 
-export interface ZutatenMaster {
-  ID: number
-  Name: string
-  kJ: string
-  kcal: string
-  Fett: string
-  "davon gesättigte Fettsäuren": string
-  "davon einfach ungesättigte Fettsäuren": string
-  "davon mehrfach ungesättigte Fettsäuren": string
-  Kohlenhydrate: string
-  "davon Zucker": string
-  Eiweiss: string
-  Ballaststoffe: string
-  Salz: string
-  "Vitamin A"?: string
-  "B-Carotin (Provitamin A)"?: string
-  "Vitamin D"?: string
-  "Vitamin E"?: string
-  "Vitamin C"?: string
-  "Vitamin K"?: string
-  "Vitamin B1 (Thiamin)"?: string
-  "Vitamin B2 (Riboflavin)"?: string
-  "Vitamin B3  Niacin (Vitamin PP)"?: string
-  "Vitamin B6"?: string
-  "Folsäure/Folacin"?: string
-  "Vitamin B12"?: string
-  "Biotin"?: string
-  "Pantothensäure"?: string
-  "Calcium"?: string
-  "Phosphor"?: string
-  "Eisen"?: string
-  "Magnesium"?: string
-  "Zink"?: string
-  "Jod"?: string
-  "Selen"?: string
-  "Kupfer"?: string
-  "Mangan"?: string
-  "Chrom"?: string
-  "Molybdän"?: string
-  "Fluorid"?: string
-  "Kalium"?: string
-  "Chlorid"?: string
-  "Cholin"?: string
-  "Betain"?: string
-  "Lycopin"?: string
-  "mehrfachungesättigte Fettsäuren (n-6)"?: string
-  "Alpha-Linolensäure (n-3) Omega3"?: string
-  "Summe von Eicosapentaensäure und  Docosahexaensäure (EPA + DH"?: string
-  "Linolsäure (Omega-6-Fettsäuren)"?: string
+export interface ZutatenMaster extends NutritionalValues {
+  ID: number;
+  Name?: string;
+  CreatedAt?: string;
 }
 
-export interface ProduktMaster {
-  ID: number
-  Produktname: string
-  kJ: string
-  kcal: string
-  Fett: string
-  "davon gesättigte Fettsäuren": string
-  "davon einfach ungesättigte Fettsäuren": string
-  "davon mehrfach ungesättigte Fettsäuren": string
-  Kohlenhydrate: string
-  "davon Zucker": string
-  Eiweiss: string
-  Ballaststoffe: string
-  Salz: string
-  "Vitamin A"?: string
-  "B-Carotin (Provitamin A)"?: string
-  "Vitamin D"?: string
-  "Vitamin E"?: string
-  "Vitamin C"?: string
-  "Vitamin K"?: string
-  "Vitamin B1 (Thiamin)"?: string
-  "Vitamin B2 (Riboflavin)"?: string
-  "Vitamin B3  Niacin (Vitamin PP)"?: string
-  "Vitamin B6"?: string
-  "Folsäure/Folacin"?: string
-  "Vitamin B12"?: string
-  "Biotin"?: string
-  "Pantothensäure"?: string
-  "Calcium"?: string
-  "Phosphor"?: string
-  "Eisen"?: string
-  "Magnesium"?: string
-  "Zink"?: string
-  "Jod"?: string
-  "Selen"?: string
-  "Kupfer"?: string
-  "Mangan"?: string
-  "Chrom"?: string
-  "Molybdän"?: string
-  "Fluorid"?: string
-  "Kalium"?: string
-  "Chlorid"?: string
-  "Cholin"?: string
-  "Betain"?: string
-  "Lycopin"?: string
-  "mehrfachungesättigte Fettsäuren (n-6)"?: string
-  "Alpha-Linolensäure (n-3) Omega3"?: string
-  "Summe von Eicosapentaensäure und  Docosahexaensäure (EPA + DH"?: string
-  "Linolsäure (Omega-6-Fettsäuren)"?: string
+export interface ProduktMaster extends NutritionalValues {
+  ID: number;
+  Produktname?: string;
+  CreatedAt?: string;
 }
 
 export interface ProductIngredients {
-  ID: number
-  ProductID: number
-  IngredientID: string  // Based on the image
-  IngredientType: string // Based on the image
-  Amount: number  // Based on the image
-  CreatedAt?: string // Based on the image
+  ID: number;
+  ProductID?: number;
+  IngredientType: 'ingredient' | 'product';
+  IngredientID: number;
+  Amount: number;
+  CreatedAt?: string;
 }
 
-// Create Supabase client
-export const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-)
+// Legacy types for backward compatibility
+export interface Ingredient {
+  id: number;
+  name: string;
+  kcal: number;
+  proteins: number;
+  vitamins: string;
+  other_nutrients: string;
+  created_at: string;
+}
+
+export interface Product {
+  id: number;
+  name: string;
+  description: string;
+  created_at: string;
+}
+
+export interface Recipe {
+  id: number;
+  name: string;
+  description: string;
+  instructions: string;
+  created_at: string;
+}
+
+export interface ProductIngredient {
+  id: number;
+  product_id: number;
+  ingredient_id: number;
+  quantity: number;
+}
+
+export interface RecipeIngredient {
+  id: number;
+  recipe_id: number;
+  ingredient_id: number;
+  quantity: number;
+}
 
 // Function to get either an ingredient or a product by ID and type
 export async function getIngredientOrProduct(id: string, type: 'Zutat' | 'Produkt'): Promise<ZutatenMaster | ProduktMaster | null> {
@@ -177,44 +163,4 @@ export function parseNutritionalValue(value: string | number | null | undefined)
   
   // For any other type, try to convert to number or return 0
   return Number(value) || 0;
-}
-
-// Legacy types for backward compatibility - these should be phased out
-export interface Ingredient {
-  id: string
-  name: string
-  kcal: number
-  proteins: number
-  vitamins: number
-  other_nutrients: number
-  created_at: string
-}
-
-export interface Product {
-  id: string
-  name: string
-  description: string
-  created_at: string
-}
-
-export interface Recipe {
-  id: string
-  name: string
-  description: string
-  instructions: string
-  created_at: string
-}
-
-export interface ProductIngredient {
-  id: string
-  product_id: string
-  ingredient_id: string
-  quantity: number
-}
-
-export interface RecipeIngredient {
-  id: string
-  recipe_id: string
-  ingredient_id: string
-  quantity: number
 } 
