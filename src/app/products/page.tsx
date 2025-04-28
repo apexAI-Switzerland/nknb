@@ -129,11 +129,11 @@ export default function ProductsPage() {
   }, [])
 
   useEffect(() => {
-    const ingredients = form.watch("ingredients");
-    if (ingredients.length > 0) {
-      calculateNutrients(ingredients);
+    const watchedIngredients = form.watch("ingredients");
+    if (watchedIngredients.length > 0) {
+      calculateNutrients(watchedIngredients);
     }
-  }, [form.watch("ingredients")]);
+  }, [form, calculateNutrients]);
 
   // Create a handler for ingredient selection changes
   const handleIngredientChange = (index: number, value: string) => {
@@ -456,7 +456,7 @@ export default function ProductsPage() {
     if (missing.length === 0) return;
     const ingredientIds = missing.filter((ing) => ing.IngredientType === 'ingredient').map((ing) => ing.IngredientID);
     const productIds = missing.filter((ing) => ing.IngredientType === 'product').map((ing) => ing.IngredientID);
-    let newNames: { [key: string]: string } = {};
+    const newNames: { [key: string]: string } = {};
     if (ingredientIds.length > 0) {
       const { data } = await supabase.from('ZutatenMaster').select('ID, Name').in('ID', ingredientIds);
       if (data) {
