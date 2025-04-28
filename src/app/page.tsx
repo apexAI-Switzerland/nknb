@@ -1,9 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
-import { supabase, parseNutritionalValue } from "@/lib/supabase";
+import { supabase, parseNutritionalValue, ProduktMaster } from "@/lib/supabase";
 
 function ProductList() {
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<ProduktMaster[]>([]);
   const [productSearch, setProductSearch] = useState("");
   const [showCount, setShowCount] = useState(10);
 

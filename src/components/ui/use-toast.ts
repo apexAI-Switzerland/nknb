@@ -17,12 +17,13 @@ type ToasterToast = ToastProps & {
   action?: ToastActionElement
 }
 
+// Define actionTypes as a type or enum for use in Action type
 const actionTypes = {
   ADD_TOAST: "ADD_TOAST",
   UPDATE_TOAST: "UPDATE_TOAST",
   DISMISS_TOAST: "DISMISS_TOAST",
   REMOVE_TOAST: "REMOVE_TOAST",
-} as const
+} as const;
 
 let count = 0
 

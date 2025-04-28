@@ -40,6 +40,14 @@ const productSchema = z.object({
 
 type ProductFormValues = z.infer<typeof productSchema>
 
+// Define a type for ingredient relations
+interface IngredientRelation {
+  ID: number;
+  IngredientType: 'ingredient' | 'product';
+  IngredientID: number;
+  Amount: number;
+}
+
 export default function ProductsPage() {
   const [products, setProducts] = useState<ProduktMaster[]>([])
   const [ingredients, setIngredients] = useState<ZutatenMaster[]>([])
@@ -111,7 +119,7 @@ export default function ProductsPage() {
   const [productSearch, setProductSearch] = useState("");
   const [showCount, setShowCount] = useState(10);
   const [expanded, setExpanded] = useState<{ [key: number]: boolean }>({});
-  const [productIngredients, setProductIngredients] = useState<{ [key: number]: any[] }>({});
+  const [productIngredients, setProductIngredients] = useState<{ [key: number]: IngredientRelation[] }>({});
   const [loadingIngredients, setLoadingIngredients] = useState<{ [key: number]: boolean }>({});
   const [ingredientNames, setIngredientNames] = useState<{ [key: string]: string }>({});
 
@@ -443,22 +451,22 @@ export default function ProductsPage() {
   }
 
   // Fetch ingredient/product names for a list of ProductIngredients
-  async function fetchIngredientNames(ingredients: any[]): Promise<void> {
-    const missing = ingredients.filter((ing: any) => !ingredientNames[`${ing.IngredientType}:${ing.IngredientID}`]);
+  async function fetchIngredientNames(ingredients: IngredientRelation[]): Promise<void> {
+    const missing = ingredients.filter((ing) => !ingredientNames[`${ing.IngredientType}:${ing.IngredientID}`]);
     if (missing.length === 0) return;
-    const ingredientIds = missing.filter((ing: any) => ing.IngredientType === 'ingredient').map((ing: any) => ing.IngredientID);
-    const productIds = missing.filter((ing: any) => ing.IngredientType === 'product').map((ing: any) => ing.IngredientID);
-    const newNames: { [key: string]: string } = {};
+    const ingredientIds = missing.filter((ing) => ing.IngredientType === 'ingredient').map((ing) => ing.IngredientID);
+    const productIds = missing.filter((ing) => ing.IngredientType === 'product').map((ing) => ing.IngredientID);
+    let newNames: { [key: string]: string } = {};
     if (ingredientIds.length > 0) {
       const { data } = await supabase.from('ZutatenMaster').select('ID, Name').in('ID', ingredientIds);
       if (data) {
-        data.forEach((ing: any) => { newNames[`ingredient:${ing.ID}`] = ing.Name; });
+        data.forEach((ing: ZutatenMaster) => { newNames[`ingredient:${ing.ID}`] = ing.Name || ''; });
       }
     }
     if (productIds.length > 0) {
       const { data } = await supabase.from('ProduktMaster').select('ID, Produktname').in('ID', productIds);
       if (data) {
-        data.forEach((prod: any) => { newNames[`product:${prod.ID}`] = prod.Produktname; });
+        data.forEach((prod: ProduktMaster) => { newNames[`product:${prod.ID}`] = prod.Produktname || ''; });
       }
     }
     setIngredientNames(names => ({ ...names, ...newNames }));
