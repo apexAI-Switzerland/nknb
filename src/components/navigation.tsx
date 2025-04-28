@@ -3,12 +3,13 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import Image from 'next/image'
 
 const navigation = [
   { name: 'Home', href: '/' },
-  { name: 'Ingredients', href: '/ingredients' },
-  { name: 'Products', href: '/products' },
-  { name: 'Recipes', href: '/recipes' },
+  { name: 'Zutaten', href: '/ingredients' },
+  { name: 'Produkte', href: '/products' },
+  { name: 'Rezepte', href: '/recipes' },
 ]
 
 export function Navigation() {
@@ -19,8 +20,9 @@ export function Navigation() {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
-            <Link href="/" className="text-xl font-bold">
-              Naturkostbar
+            <Link href="/" className="flex items-center space-x-2">
+              <Image src="/main_logo.svg" alt="Naturkostbar Logo" width={120} height={32} priority />
+              <span className="sr-only">Naturkostbar</span>
             </Link>
           </div>
           <div className="flex space-x-4">

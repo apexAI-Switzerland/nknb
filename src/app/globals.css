@@ -76,6 +76,8 @@
   --sidebar-ring: oklch(0.708 0 0);
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
+  --naturkostbar-brown: #432918;
+  --naturkostbar-red: #e30613;
 }
 
 .dark {
@@ -119,4 +121,19 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+.naturkostbar-accent {
+  color: var(--naturkostbar-brown);
+}
+.naturkostbar-accent-bg {
+  background-color: var(--naturkostbar-brown);
+  color: #fff;
+}
+.naturkostbar-red {
+  color: var(--naturkostbar-red);
+}
+.naturkostbar-red-bg {
+  background-color: var(--naturkostbar-red);
+  color: #fff;
 }

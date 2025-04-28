@@ -278,7 +278,7 @@ export default function IngredientsPage() {
 
   return (
     <main className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">Zutaten</h1>
+      <h1 className="text-2xl font-bold mb-6 naturkostbar-accent">Zutaten</h1>
       
       <div className="mb-8">
         <Input
@@ -299,7 +299,7 @@ export default function IngredientsPage() {
                 onClick={() => openIngredientDetails(ingredient)}
               >
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">{ingredient.Name}</CardTitle>
+                  <CardTitle className="text-lg naturkostbar-accent">{ingredient.Name}</CardTitle>
                 </CardHeader>
                 <CardContent className="pb-2">
                   <div className="grid grid-cols-2 gap-y-1 text-sm">

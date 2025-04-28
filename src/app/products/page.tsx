@@ -652,13 +652,13 @@ export default function ProductsPage() {
         </CardContent>
       </Card>
 
-      <h2 className="text-xl font-bold mt-12 mb-6">Produktliste</h2>
+      <h2 className="text-xl font-bold mt-12 mb-6 naturkostbar-accent">Produktliste</h2>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {products.map((product) => (
           <Card key={product.ID}>
             <CardHeader>
-              <CardTitle>{product.Produktname}</CardTitle>
+              <CardTitle className="naturkostbar-accent">{product.Produktname}</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
