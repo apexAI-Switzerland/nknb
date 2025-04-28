@@ -19,7 +19,6 @@ import {
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase'
-import { ZutatenMaster, ProduktMaster } from '@/lib/supabase'
 
 interface IngredientSelectorProps {
   control: UseFormReturn<any>
@@ -35,7 +34,6 @@ type IngredientOption = {
 
 export function IngredientSelector({ control, name, label = "Ingredients and Products" }: IngredientSelectorProps) {
   const [options, setOptions] = useState<IngredientOption[]>([])
-  const [loading, setLoading] = useState(true)
   const ingredients = control.getValues(name) || []
 
   useEffect(() => {
@@ -75,7 +73,7 @@ export function IngredientSelector({ control, name, label = "Ingredients and Pro
       } catch (error) {
         console.error('Error fetching options:', error)
       } finally {
-        setLoading(false)
+
       }
     }
 

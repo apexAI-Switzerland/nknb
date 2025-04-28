@@ -1,6 +1,6 @@
 'use client'
 
-import { supabase, NutritionalValues, ZutatenMaster, ProduktMaster, ProductIngredients, parseNutritionalValue } from './supabase'
+import { supabase, NutritionalValues, ZutatenMaster, ProduktMaster, ProductIngredients } from './supabase'
 
 // Calculate nutritional values based on amount
 export const calculateNutritionalValues = (

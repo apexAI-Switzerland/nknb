@@ -4,8 +4,6 @@ import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card"
 import {
   Form,
@@ -26,7 +24,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm, useFieldArray } from "react-hook-form"
 import * as z from "zod"
-import { supabase, ProduktMaster, ZutatenMaster, ProductIngredients, parseNutritionalValue } from "@/lib/supabase"
+import { supabase, ProduktMaster, ZutatenMaster, parseNutritionalValue } from "@/lib/supabase"
 import { toast } from "@/components/ui/use-toast"
 import { useState, useEffect } from "react"
 import { X } from "lucide-react"
@@ -45,7 +43,6 @@ type ProductFormValues = z.infer<typeof productSchema>
 export default function ProductsPage() {
   const [products, setProducts] = useState<ProduktMaster[]>([])
   const [ingredients, setIngredients] = useState<ZutatenMaster[]>([])
-  const [loading, setLoading] = useState(true)
   const [nutritionalValues, setNutritionalValues] = useState({
     kJ: "0",
     kcal: "0",
@@ -144,7 +141,7 @@ export default function ProductsPage() {
   };
 
   // Create a handler for amount changes
-  const handleAmountChange = (index: number, value: number) => {
+  const handleAmountChange = (index: number) => {
     const currentIngredient = form.getValues(`ingredients.${index}`);
     
     if (currentIngredient.IngredientID) {
@@ -154,7 +151,7 @@ export default function ProductsPage() {
   };
 
   // Create a handler for ingredient type changes
-  const handleTypeChange = (index: number, value: string) => {
+  const handleTypeChange = (index: number) => {
     // Reset the ingredient ID when type changes
     form.setValue(`ingredients.${index}.IngredientID`, "");
     calculateNutrients(form.getValues('ingredients'));
@@ -188,7 +185,6 @@ export default function ProductsPage() {
 
       if (error) throw error
       setIngredients(data || [])
-      setLoading(false)
     } catch (error) {
       console.error('Error fetching ingredients:', error)
       toast({
@@ -452,7 +448,7 @@ export default function ProductsPage() {
     if (missing.length === 0) return;
     const ingredientIds = missing.filter((ing: any) => ing.IngredientType === 'ingredient').map((ing: any) => ing.IngredientID);
     const productIds = missing.filter((ing: any) => ing.IngredientType === 'product').map((ing: any) => ing.IngredientID);
-    let newNames: { [key: string]: string } = {};
+    const newNames: { [key: string]: string } = {};
     if (ingredientIds.length > 0) {
       const { data } = await supabase.from('ZutatenMaster').select('ID, Name').in('ID', ingredientIds);
       if (data) {
@@ -506,7 +502,7 @@ export default function ProductsPage() {
                               value={field.value}
                               onValueChange={(value) => {
                                 field.onChange(value);
-                                handleTypeChange(index, value);
+                                handleTypeChange(index);
                               }}
                             >
                               <SelectTrigger>
@@ -585,7 +581,7 @@ export default function ProductsPage() {
                                   onChange={(e) => {
                                     const value = parseFloat(e.target.value) || 0;
                                     field.onChange(value);
-                                    handleAmountChange(index, value);
+                                    handleAmountChange(index);
                                   }}
                                 />
                                 <span className="text-gray-400 text-xs">g</span>

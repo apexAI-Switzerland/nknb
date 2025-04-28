@@ -1,6 +1,4 @@
 "use client";
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
 import { useState, useEffect } from "react";
 import { supabase, parseNutritionalValue } from "@/lib/supabase";
 
@@ -8,7 +6,6 @@ function ProductList() {
   const [products, setProducts] = useState<any[]>([]);
   const [productSearch, setProductSearch] = useState("");
   const [showCount, setShowCount] = useState(10);
-  const [expanded, setExpanded] = useState<{ [key: number]: boolean }>({});
 
   useEffect(() => {
     async function fetchProducts() {
