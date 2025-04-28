@@ -7,8 +7,11 @@ import { Navigation } from "@/components/navigation";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Naturkostbar Ingredient Management",
-  description: "Centralized ingredient and product management system for Naturkostbar",
+  title: "Naturkostbar Nährwertverwaltung",
+  description: "Nährwertverwaltung für Naturkostbar",
+  icons: {
+    icon: "/public/favicon_nk.png"
+  }
 };
 
 export default function RootLayout({
