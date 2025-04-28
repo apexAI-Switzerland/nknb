@@ -501,29 +501,29 @@ export default function ProductsPage() {
                   <div key={field.id} className="flex gap-2 mb-2 items-start">
                     {/* Dropdown (Zutat/Produkt) */}
                     <div className="flex items-center h-full w-1/4 min-w-[120px]">
-                      <FormField
-                        control={form.control}
-                        name={`ingredients.${index}.IngredientType`}
-                        render={({ field }) => (
+                    <FormField
+                      control={form.control}
+                      name={`ingredients.${index}.IngredientType`}
+                      render={({ field }) => (
                           <FormItem className="w-full">
-                            <Select
-                              value={field.value}
-                              onValueChange={(value) => {
-                                field.onChange(value);
+                          <Select
+                            value={field.value}
+                            onValueChange={(value) => {
+                              field.onChange(value);
                                 handleTypeChange(index);
-                              }}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Type" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Zutat">Zutat</SelectItem>
-                                <SelectItem value="Produkt">Produkt</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </FormItem>
-                        )}
-                      />
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Zutat">Zutat</SelectItem>
+                              <SelectItem value="Produkt">Produkt</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )}
+                    />
                     </div>
                     {/* Search + Select stacked */}
                     <div className="flex flex-col flex-1 gap-1">
@@ -535,22 +535,22 @@ export default function ProductsPage() {
                         onChange={e => setIngredientSearch(s => ({ ...s, [index]: e.target.value }))}
                         style={{ minWidth: 0 }}
                       />
-                      <FormField
-                        control={form.control}
-                        name={`ingredients.${index}.IngredientID`}
-                        render={({ field }) => (
+                    <FormField
+                      control={form.control}
+                      name={`ingredients.${index}.IngredientID`}
+                      render={({ field }) => (
                           <FormItem className="w-full">
-                            <Select
-                              value={field.value}
-                              onValueChange={(value) => {
-                                field.onChange(value);
-                                handleIngredientChange(index, value);
-                              }}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select ingredient" />
-                              </SelectTrigger>
-                              <SelectContent>
+                          <Select
+                            value={field.value}
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              handleIngredientChange(index, value);
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select ingredient" />
+                            </SelectTrigger>
+                            <SelectContent>
                                 {(form.watch(`ingredients.${index}.IngredientType`) === 'Zutat'
                                   ? ingredients.filter(ing =>
                                       (!ingredientSearch[index] ||
@@ -565,50 +565,50 @@ export default function ProductsPage() {
                                 ).map(item => (
                                   <SelectItem key={item.ID} value={item.ID.toString()}>
                                     {form.watch(`ingredients.${index}.IngredientType`) === 'Zutat' ? item.Name : item.Produktname}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </FormItem>
-                        )}
-                      />
+                                    </SelectItem>
+                                  ))}
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )}
+                    />
                     </div>
                     {/* Amount input + g */}
                     <div className="flex items-center gap-2 w-1/4 min-w-[120px]">
-                      <FormField
-                        control={form.control}
-                        name={`ingredients.${index}.Amount`}
-                        render={({ field }) => (
+                    <FormField
+                      control={form.control}
+                      name={`ingredients.${index}.Amount`}
+                      render={({ field }) => (
                           <FormItem className="w-full">
-                            <FormControl>
+                          <FormControl>
                               <div className="flex items-center gap-2">
-                                <Input
-                                  type="number"
+                            <Input
+                              type="number"
                                   placeholder="Menge"
-                                  {...field}
-                                  onChange={(e) => {
-                                    const value = parseFloat(e.target.value) || 0;
-                                    field.onChange(value);
+                              {...field}
+                              onChange={(e) => {
+                                const value = parseFloat(e.target.value) || 0;
+                                field.onChange(value);
                                     handleAmountChange(index);
-                                  }}
-                                />
+                              }}
+                            />
                                 <span className="text-gray-400 text-xs">g</span>
                               </div>
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
                     </div>
                     {/* Remove button */}
                     <div className="flex items-center h-full">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => remove(index)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => remove(index)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                     </div>
                   </div>
                 ))}
@@ -848,7 +848,7 @@ export default function ProductsPage() {
                             <div>Magnesium: <b>{parseNutritionalValue(product["Magnesium"]).toFixed(1)}</b></div>
                             <div>Zink: <b>{parseNutritionalValue(product["Zink"]).toFixed(1)}</b></div>
                             <div>Jod: <b>{parseNutritionalValue(product["Jod"]).toFixed(1)}</b></div>
-                          </div>
+                      </div>
                         </details>
                         {/* Sonstige Nährstoffe */}
                         <details className="mt-2">
@@ -856,9 +856,9 @@ export default function ProductsPage() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
                             <div>Cholin: <b>{parseNutritionalValue(product["Cholin"]).toFixed(1)}</b></div>
                             <div>Betain: <b>{parseNutritionalValue(product["Betain"]).toFixed(1)}</b></div>
-                          </div>
-                        </details>
-                      </div>
+                  </div>
+                </details>
+              </div>
                     </td>
                   </tr>
                 )}

@@ -14,11 +14,10 @@ function ProductList() {
   useEffect(() => {
     async function fetchProducts() {
       setIsLoading(true);
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('ProduktMaster')
         .select('*')
         .order('Produktname', { ascending: true });
-      
       setProducts(data || []);
       setIsLoading(false);
     }
