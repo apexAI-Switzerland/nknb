@@ -397,11 +397,15 @@ export default function ProductsPage() {
         "Summe von Eicosapentaensäure und  Docosahexaensäure (EPA + DH": "0",
         "Linolsäure (Omega-6-Fettsäuren)": "0"
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error adding product:', error);
+      let message = "Failed to add product";
+      if (error && typeof error === 'object' && 'message' in error && typeof (error as any).message === 'string') {
+        message = (error as { message: string }).message;
+      }
       toast({
         title: "Error",
-        description: error.message || "Failed to add product",
+        description: message,
         variant: "destructive",
       })
     }

@@ -20,11 +20,11 @@ import {
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase'
 
-interface IngredientSelectorProps {
-  control: UseFormReturn<any>
-  name: string
-  label?: string
-}
+type IngredientFormItem = {
+  IngredientID: string;
+  IngredientType: 'ZutatenMaster' | 'ProduktMaster';
+  Amount: number;
+};
 
 type IngredientOption = {
   id: string
@@ -32,9 +32,16 @@ type IngredientOption = {
   type: 'ZutatenMaster' | 'ProduktMaster'
 }
 
+interface IngredientSelectorProps {
+  control: UseFormReturn<{ [key: string]: IngredientFormItem[] }>
+  name: string
+  label?: string
+}
+
 export function IngredientSelector({ control, name, label = "Ingredients and Products" }: IngredientSelectorProps) {
   const [options, setOptions] = useState<IngredientOption[]>([])
-  const ingredients = control.getValues(name) || []
+  const ingredientsRaw = control.getValues(name)
+  const ingredients = Array.isArray(ingredientsRaw) ? ingredientsRaw : []
 
   useEffect(() => {
     async function fetchOptions() {
@@ -110,7 +117,7 @@ export function IngredientSelector({ control, name, label = "Ingredients and Pro
                         <SelectItem value="" disabled>Select ingredient or product</SelectItem>
                         {options.map((option) => (
                           <SelectItem key={option.id} value={option.id}>
-                            {option.name} ({option.type === 'ZutatenMaster' ? 'Ingredient' : 'Product'})
+                            {option.name} ({String(option.type) === 'ZutatenMaster' ? 'Ingredient' : 'Product'})
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -144,11 +151,10 @@ export function IngredientSelector({ control, name, label = "Ingredients and Pro
         type="button"
         variant="outline"
         onClick={() => {
-          const currentValue = control.getValues(name) || []
-          control.setValue(name, [
-            ...currentValue,
-            { IngredientID: '', IngredientType: 'ZutatenMaster', Amount: 0 }
-          ])
+          const currentValue = control.getValues(name)
+          const arr = Array.isArray(currentValue) ? currentValue : []
+          const newIngredient: IngredientFormItem = { IngredientID: '', IngredientType: 'ZutatenMaster', Amount: 0 }
+          control.setValue(name, [...arr, newIngredient])
         }}
       >
         Add Ingredient
