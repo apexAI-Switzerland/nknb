@@ -50,7 +50,7 @@ interface IngredientRelation {
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<ProduktMaster[]>([])
-  const [ingredients, setIngredients] = useState<ZutatenMaster[]>([])
+  const [ingredients] = useState<ZutatenMaster[]>([])
   const [nutritionalValues, setNutritionalValues] = useState({
     kJ: "0",
     kcal: "0",
