@@ -263,25 +263,6 @@ export default function ProductsPage() {
     }
   }
 
-  async function fetchIngredients() {
-    try {
-      const { data, error } = await supabase
-        .from('ZutatenMaster')
-        .select('*')
-        .order('Name')
-
-      if (error) throw error
-      setIngredients(data || [])
-    } catch (error) {
-      console.error('Error fetching ingredients:', error)
-      toast({
-        title: "Error",
-        description: "Failed to fetch ingredients",
-        variant: "destructive",
-      })
-    }
-  }
-
   async function onSubmit(data: ProductFormValues) {
     try {
       console.log("Form data:", data);
