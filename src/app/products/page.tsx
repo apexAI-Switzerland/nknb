@@ -26,7 +26,7 @@ import { useForm, useFieldArray } from "react-hook-form"
 import * as z from "zod"
 import { supabase, ProduktMaster, ZutatenMaster, parseNutritionalValue } from "@/lib/supabase"
 import { toast } from "@/components/ui/use-toast"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { X } from "lucide-react"
 
 const productSchema = z.object({
@@ -123,87 +123,8 @@ export default function ProductsPage() {
   const [loadingIngredients, setLoadingIngredients] = useState<{ [key: number]: boolean }>({});
   const [ingredientNames, setIngredientNames] = useState<{ [key: string]: string }>({});
 
-  useEffect(() => {
-    fetchProducts()
-    fetchIngredients()
-  }, [])
-
-  useEffect(() => {
-    const watchedIngredients = form.watch("ingredients");
-    if (watchedIngredients.length > 0) {
-      calculateNutrients(watchedIngredients);
-    }
-  }, [form, calculateNutrients]);
-
-  // Create a handler for ingredient selection changes
-  const handleIngredientChange = (index: number, value: string) => {
-    const currentIngredient = form.getValues(`ingredients.${index}`);
-    const field = form.getValues(`ingredients.${index}.IngredientType`);
-    const source = field === 'Zutat' ? ingredients : products;
-    const ingredient = source.find(i => i.ID.toString() === value);
-    
-    if (ingredient && currentIngredient.Amount > 0) {
-      // Trigger calculation when selection changes and amount is set
-      calculateNutrients(form.getValues('ingredients'));
-    }
-  };
-
-  // Create a handler for amount changes
-  const handleAmountChange = (index: number) => {
-    const currentIngredient = form.getValues(`ingredients.${index}`);
-    
-    if (currentIngredient.IngredientID) {
-      // Trigger calculation when amount changes and ingredient is selected
-      calculateNutrients(form.getValues('ingredients'));
-    }
-  };
-
-  // Create a handler for ingredient type changes
-  const handleTypeChange = (index: number) => {
-    // Reset the ingredient ID when type changes
-    form.setValue(`ingredients.${index}.IngredientID`, "");
-    calculateNutrients(form.getValues('ingredients'));
-  };
-
-  async function fetchProducts() {
-    try {
-      const { data, error } = await supabase
-        .from('ProduktMaster')
-        .select('*')
-        .order('ID', { ascending: false })
-
-      if (error) throw error
-      setProducts(data || [])
-    } catch (error) {
-      console.error('Error fetching products:', error)
-      toast({
-        title: "Error",
-        description: "Failed to fetch products",
-        variant: "destructive",
-      })
-    }
-  }
-
-  async function fetchIngredients() {
-    try {
-      const { data, error } = await supabase
-        .from('ZutatenMaster')
-        .select('*')
-        .order('Name')
-
-      if (error) throw error
-      setIngredients(data || [])
-    } catch (error) {
-      console.error('Error fetching ingredients:', error)
-      toast({
-        title: "Error",
-        description: "Failed to fetch ingredients",
-        variant: "destructive",
-      })
-    }
-  }
-
-  function calculateNutrients(formIngredients: ProductFormValues['ingredients']) {
+  // Wrap calculateNutrients in useCallback to fix the warning
+  const calculateNutrients = useCallback((formIngredients: ProductFormValues['ingredients']) => {
     // Skip calculation if no ingredients
     if (formIngredients.length === 0) return;
 
@@ -284,6 +205,81 @@ export default function ProductsPage() {
 
     console.log("Updated nutritional values:", values);
     setNutritionalValues(values)
+  }, [ingredients, products]);
+
+  useEffect(() => {
+    const watchedIngredients = form.watch("ingredients");
+    if (watchedIngredients.length > 0) {
+      calculateNutrients(watchedIngredients);
+    }
+  }, [form, calculateNutrients]);
+
+  // Create a handler for ingredient selection changes
+  const handleIngredientChange = (index: number, value: string) => {
+    const currentIngredient = form.getValues(`ingredients.${index}`);
+    const field = form.getValues(`ingredients.${index}.IngredientType`);
+    const source = field === 'Zutat' ? ingredients : products;
+    const ingredient = source.find(i => i.ID.toString() === value);
+    
+    if (ingredient && currentIngredient.Amount > 0) {
+      // Trigger calculation when selection changes and amount is set
+      calculateNutrients(form.getValues('ingredients'));
+    }
+  };
+
+  // Create a handler for amount changes
+  const handleAmountChange = (index: number) => {
+    const currentIngredient = form.getValues(`ingredients.${index}`);
+    
+    if (currentIngredient.IngredientID) {
+      // Trigger calculation when amount changes and ingredient is selected
+      calculateNutrients(form.getValues('ingredients'));
+    }
+  };
+
+  // Create a handler for ingredient type changes
+  const handleTypeChange = (index: number) => {
+    // Reset the ingredient ID when type changes
+    form.setValue(`ingredients.${index}.IngredientID`, "");
+    calculateNutrients(form.getValues('ingredients'));
+  };
+
+  async function fetchProducts() {
+    try {
+      const { data, error } = await supabase
+        .from('ProduktMaster')
+        .select('*')
+        .order('ID', { ascending: false })
+
+      if (error) throw error
+      setProducts(data || [])
+    } catch (error) {
+      console.error('Error fetching products:', error)
+      toast({
+        title: "Error",
+        description: "Failed to fetch products",
+        variant: "destructive",
+      })
+    }
+  }
+
+  async function fetchIngredients() {
+    try {
+      const { data, error } = await supabase
+        .from('ZutatenMaster')
+        .select('*')
+        .order('Name')
+
+      if (error) throw error
+      setIngredients(data || [])
+    } catch (error) {
+      console.error('Error fetching ingredients:', error)
+      toast({
+        title: "Error",
+        description: "Failed to fetch ingredients",
+        variant: "destructive",
+      })
+    }
   }
 
   async function onSubmit(data: ProductFormValues) {
@@ -848,7 +844,7 @@ export default function ProductsPage() {
                             <div>Magnesium: <b>{parseNutritionalValue(product["Magnesium"]).toFixed(1)}</b></div>
                             <div>Zink: <b>{parseNutritionalValue(product["Zink"]).toFixed(1)}</b></div>
                             <div>Jod: <b>{parseNutritionalValue(product["Jod"]).toFixed(1)}</b></div>
-                      </div>
+                          </div>
                         </details>
                         {/* Sonstige Nährstoffe */}
                         <details className="mt-2">
