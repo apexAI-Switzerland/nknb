@@ -4,8 +4,8 @@ import { createClient } from '@supabase/supabase-js'
 
 // Create a single supabase client for interacting with your database
 export const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL as string,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
+  "https://ihkmyqtrnzerttrxnrsg.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imloa215cXRybnplcnR0cnhucnNnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM2NjUzNTYsImV4cCI6MjA1OTI0MTM1Nn0.ndwJVIUT5ZTlKliNnOZik1PiVOm_kWpOAmYHsykyISY"
 )
 
 // New type definitions based on actual database schema
