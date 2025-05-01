@@ -19,7 +19,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase().auth.onAuthStateChange((_event: any, session: any) => {
       setUser(session?.user ?? null);
       setLoading(false);
       if (!session?.user && pathname !== "/login") {
@@ -29,7 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         router.replace("/");
       }
     });
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase().auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setLoading(false);
       if (!session?.user && pathname !== "/login") {
@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [router, pathname]);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await supabase().auth.signOut();
     setUser(null);
     router.replace("/login");
   };

@@ -82,7 +82,7 @@ export const getIngredientOrProduct = async (
 ): Promise<ZutatenMaster | ProduktMaster | null> => {
   try {
     if (type === 'ingredient') {
-      const { data, error } = await supabase
+      const { data, error } = await supabase()
         .from('ZutatenMaster')
         .select('*')
         .eq('ID', id)
@@ -91,7 +91,7 @@ export const getIngredientOrProduct = async (
       if (error) throw error;
       return data as ZutatenMaster;
     } else {
-      const { data, error } = await supabase
+      const { data, error } = await supabase()
         .from('ProduktMaster')
         .select('*')
         .eq('ID', id)

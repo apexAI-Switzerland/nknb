@@ -47,7 +47,7 @@ export function IngredientSelector({ control, name, label = "Ingredients and Pro
     async function fetchOptions() {
       try {
         // Fetch ingredients
-        const { data: ingredients, error: ingredientsError } = await supabase
+        const { data: ingredients, error: ingredientsError } = await supabase()
           .from('ZutatenMaster')
           .select('ID, Produktname')
           .order('Produktname')
@@ -55,7 +55,7 @@ export function IngredientSelector({ control, name, label = "Ingredients and Pro
         if (ingredientsError) throw ingredientsError
 
         // Fetch products
-        const { data: products, error: productsError } = await supabase
+        const { data: products, error: productsError } = await supabase()
           .from('ProduktMaster')
           .select('ID, Produktname')
           .order('Produktname')
@@ -64,12 +64,12 @@ export function IngredientSelector({ control, name, label = "Ingredients and Pro
 
         // Combine and format options
         const formattedOptions: IngredientOption[] = [
-          ...(ingredients || []).map(ing => ({
+          ...(ingredients || []).map((ing: { ID: string; Produktname: string }) => ({
             id: ing.ID,
             name: ing.Produktname,
             type: 'ZutatenMaster' as const
           })),
-          ...(products || []).map(prod => ({
+          ...(products || []).map((prod: { ID: string; Produktname: string }) => ({
             id: prod.ID,
             name: prod.Produktname,
             type: 'ProduktMaster' as const

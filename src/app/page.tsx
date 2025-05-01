@@ -14,7 +14,7 @@ function ProductList() {
   useEffect(() => {
     async function fetchProducts() {
       setIsLoading(true);
-      const { data } = await supabase
+      const { data } = await supabase()
         .from('ProduktMaster')
         .select('*')
         .order('Produktname', { ascending: true });

@@ -184,7 +184,7 @@ export default function IngredientsPage() {
   async function fetchIngredients() {
     try {
       setLoading(true)
-      const { data, error } = await supabase
+      const { data, error } = await supabase()
         .from('ZutatenMaster')
         .select('*')
         .order('Name')
@@ -205,7 +205,7 @@ export default function IngredientsPage() {
 
   async function onSubmit(data: IngredientFormValues) {
     try {
-      const { error } = await supabase
+      const { error } = await supabase()
         .from('ZutatenMaster')
         .insert([data])
 

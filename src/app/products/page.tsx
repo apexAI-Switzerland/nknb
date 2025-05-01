@@ -246,7 +246,7 @@ export default function ProductsPage() {
 
   async function fetchProducts() {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabase()
         .from('ProduktMaster')
         .select('*')
         .order('ID', { ascending: false })
@@ -276,7 +276,7 @@ export default function ProductsPage() {
       );
       
       // First, create the product
-      const { data: newProduct, error } = await supabase
+      const { data: newProduct, error } = await supabase()
         .from('ProduktMaster')
         .insert({
           Produktname: data.Produktname,
@@ -314,7 +314,7 @@ export default function ProductsPage() {
               return data;
             });
             console.log("Complete ingredient data to be inserted:", ingredientsToInsert);
-            const { data: insertedData, error: ingredientsError } = await supabase
+            const { data: insertedData, error: ingredientsError } = await supabase()
               .from('ProductIngredients')
               .insert(ingredientsToInsert)
               .select();
@@ -421,12 +421,12 @@ export default function ProductsPage() {
   async function fetchProductIngredients(productId: number) {
     if (productIngredients[productId]) return; // Already fetched
     setLoadingIngredients(l => ({ ...l, [productId]: true }));
-    const { data, error } = await supabase
+    const { data: ingredientData, error: ingredientError } = await supabase()
       .from('ProductIngredients')
       .select('*')
       .eq('ProductID', productId);
-    if (!error) {
-      setProductIngredients(pi => ({ ...pi, [productId]: data }));
+    if (!ingredientError) {
+      setProductIngredients(pi => ({ ...pi, [productId]: ingredientData }));
     }
     setLoadingIngredients(l => ({ ...l, [productId]: false }));
   }
@@ -439,15 +439,15 @@ export default function ProductsPage() {
     const productIds = missing.filter((ing) => ing.IngredientType === 'product').map((ing) => ing.IngredientID);
     const newNames: { [key: string]: string } = {};
     if (ingredientIds.length > 0) {
-      const { data } = await supabase.from('ZutatenMaster').select('ID, Name').in('ID', ingredientIds);
-      if (data) {
-        data.forEach((ing: ZutatenMaster) => { newNames[`ingredient:${ing.ID}`] = ing.Name || ''; });
+      const { data: zutatData } = await supabase().from('ZutatenMaster').select('ID, Name').in('ID', ingredientIds);
+      if (zutatData) {
+        zutatData.forEach((ing: ZutatenMaster) => { newNames[`ingredient:${ing.ID}`] = ing.Name || ''; });
       }
     }
     if (productIds.length > 0) {
-      const { data } = await supabase.from('ProduktMaster').select('ID, Produktname').in('ID', productIds);
-      if (data) {
-        data.forEach((prod: ProduktMaster) => { newNames[`product:${prod.ID}`] = prod.Produktname || ''; });
+      const { data: produktData } = await supabase().from('ProduktMaster').select('ID, Produktname').in('ID', productIds);
+      if (produktData) {
+        produktData.forEach((prod: ProduktMaster) => { newNames[`product:${prod.ID}`] = prod.Produktname || ''; });
       }
     }
     setIngredientNames(names => ({ ...names, ...newNames }));
@@ -837,9 +837,9 @@ export default function ProductsPage() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
                             <div>Cholin: <b>{parseNutritionalValue(product["Cholin"]).toFixed(1)}</b></div>
                             <div>Betain: <b>{parseNutritionalValue(product["Betain"]).toFixed(1)}</b></div>
-                  </div>
-                </details>
-              </div>
+                          </div>
+                        </details>
+                      </div>
                     </td>
                   </tr>
                 )}

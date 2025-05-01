@@ -1,12 +1,9 @@
 'use client'
 
-import { createClient } from '@supabase/supabase-js'
+import { supabase as browserClient } from './supabase/client'
 
-// Create a single supabase client for interacting with your database
-export const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL as string,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
-);
+// Export the browser client
+export const supabase = browserClient
 
 // New type definitions based on actual database schema
 export interface NutritionalValues {
@@ -127,7 +124,7 @@ export async function getIngredientOrProduct(id: string, type: 'Zutat' | 'Produk
   try {
     console.log(`Fetching ${type} with ID ${id} from table ${table}`);
     
-    const { data, error } = await supabase
+    const { data, error } = await supabase()
       .from(table)
       .select('*')
       .eq('ID', id)
