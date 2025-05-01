@@ -1,6 +1,7 @@
 'use client'
 
 import { createClient } from '@supabase/supabase-js'
+import getConfig from 'next/config'
 
 // Create a single supabase client for interacting with your database
 export const createBrowserClient = () => {
@@ -11,14 +12,20 @@ export const createBrowserClient = () => {
     return value.replace(/^["']|["']$/g, '').trim();
   };
 
-  const supabaseUrl = cleanEnvVar(process.env.NEXT_PUBLIC_SUPABASE_URL);
-  const supabaseKey = cleanEnvVar(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  // Get runtime config
+  const { publicRuntimeConfig } = getConfig() || {};
+  
+  // Try both runtime config and process.env
+  const supabaseUrl = cleanEnvVar(publicRuntimeConfig?.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const supabaseKey = cleanEnvVar(publicRuntimeConfig?.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
   // More detailed debugging
   console.log('Environment Variables (Debug):', {
-    rawUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    runtimeConfigUrl: publicRuntimeConfig?.NEXT_PUBLIC_SUPABASE_URL,
+    processEnvUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
     cleanedUrl: supabaseUrl,
-    hasKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    hasRuntimeKey: !!publicRuntimeConfig?.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    hasProcessKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     cleanedKeyLength: supabaseKey.length
   });
 
