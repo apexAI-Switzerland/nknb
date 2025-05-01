@@ -1,8 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
+  // Remove standalone output as we're not using Docker anymore
   swcMinify: true,
-  // Remove experimental.serverActions as it's now default
   experimental: {},
   // Add environment variables that should be available at build time
   env: {
