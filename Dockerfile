@@ -5,20 +5,26 @@ FROM node:20-alpine AS base
 FROM base AS deps
 WORKDIR /app
 
+# Install dependencies that require compilation
+RUN apk add --no-cache libc6-compat
+
 # Copy package files
 COPY package.json package-lock.json ./
 
 # Install dependencies
-RUN npm ci
+RUN npm install --frozen-lockfile
 
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
+
+# Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Disable Next.js telemetry during the build
+# Set environment variables
 ENV NEXT_TELEMETRY_DISABLED 1
+ENV NODE_ENV production
 
 # Build the application
 RUN npm run build
@@ -27,22 +33,28 @@ RUN npm run build
 FROM base AS runner
 WORKDIR /app
 
+# Set environment variables
 ENV NODE_ENV production
 ENV NEXT_TELEMETRY_DISABLED 1
 
-# Copy necessary files from builder
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-
-# Set the correct permissions
+# Create a non-root user
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
-RUN chown -R nextjs:nodejs /app
+
+# Copy necessary files from builder
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Set the correct permissions
 USER nextjs
 
 # Expose the port
 EXPOSE 3000
+
+# Set the correct environment variable for the port
+ENV PORT 3000
+ENV HOSTNAME "0.0.0.0"
 
 # Start the application
 CMD ["node", "server.js"] 
