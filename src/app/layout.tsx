@@ -4,12 +4,13 @@ import "./globals.css";
 import { Toaster } from "../components/ui/toaster";
 import { Navigation } from "@/components/navigation";
 import { AuthProvider } from "@/components/AuthProvider";
+import { getEnvVars } from "@/lib/env";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Naturkostbar Nährwertverwaltung",
-  description: "Nährwertverwaltung für Naturkostbar",
+  title: "Naturkostbar Nährwerteverwaltung",
+  description: "Verwaltung von Nährwerten für die Naturkostbar",
   icons: {
     icon: "/public/favicon_nk.png"
   }
@@ -42,11 +43,22 @@ function Footer() {
 
 export default function RootLayout({
   children,
-}: {
-  children: React.ReactNode
-}) {
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  // Get environment variables
+  const env = getEnvVars();
+  
   return (
-    <html lang="en">
+    <html lang="de">
+      <head>
+        <script
+          id="env-script"
+          dangerouslySetInnerHTML={{
+            __html: `window.ENV = ${JSON.stringify(env)}`,
+          }}
+        />
+      </head>
       <body className={`${inter.className} min-h-screen flex flex-col`}>
         <AuthProvider>
           <Navigation />

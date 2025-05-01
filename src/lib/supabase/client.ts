@@ -2,6 +2,15 @@
 
 import { createClient } from '@supabase/supabase-js'
 
+declare global {
+  interface Window {
+    ENV?: {
+      NEXT_PUBLIC_SUPABASE_URL?: string
+      NEXT_PUBLIC_SUPABASE_ANON_KEY?: string
+    }
+  }
+}
+
 // Create a single supabase client for interacting with your database
 export const createBrowserClient = () => {
   // Helper function to clean environment variables
@@ -11,31 +20,31 @@ export const createBrowserClient = () => {
     return value.replace(/^["']|["']$/g, '').trim();
   };
 
-  // Try to get environment variables from different possible sources
+  // Try to get environment variables from window.ENV first, then fall back to process.env
   const supabaseUrl = cleanEnvVar(
-    process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    window.__NEXT_DATA__?.props?.pageProps?.env?.NEXT_PUBLIC_SUPABASE_URL
+    window.ENV?.NEXT_PUBLIC_SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL
   );
   
   const supabaseKey = cleanEnvVar(
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    window.__NEXT_DATA__?.props?.pageProps?.env?.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    window.ENV?.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   );
 
   // More detailed debugging
   console.log('Environment Variables (Debug):', {
+    windowEnvUrl: window.ENV?.NEXT_PUBLIC_SUPABASE_URL,
     processEnvUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    windowDataUrl: window.__NEXT_DATA__?.props?.pageProps?.env?.NEXT_PUBLIC_SUPABASE_URL,
     cleanedUrl: supabaseUrl,
+    hasWindowKey: !!window.ENV?.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     hasProcessKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    hasWindowKey: !!window.__NEXT_DATA__?.props?.pageProps?.env?.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     cleanedKeyLength: supabaseKey.length
   });
 
   if (!supabaseUrl || !supabaseKey) {
-    console.error('Missing Supabase configuration. Available environment:', {
-      processEnv: process.env,
-      windowData: window.__NEXT_DATA__?.props?.pageProps?.env
+    console.error('Missing Supabase configuration:', {
+      windowEnv: window.ENV,
+      processEnv: process.env
     });
     throw new Error(
       `Missing required Supabase environment variables.\nURL: ${supabaseUrl ? 'set' : 'missing'}\nKey: ${supabaseKey ? 'set' : 'missing'}`
