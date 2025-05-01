@@ -1,7 +1,6 @@
 'use client'
 
 import { createClient } from '@supabase/supabase-js'
-import getConfig from 'next/config'
 
 // Create a single supabase client for interacting with your database
 export const createBrowserClient = () => {
@@ -12,35 +11,35 @@ export const createBrowserClient = () => {
     return value.replace(/^["']|["']$/g, '').trim();
   };
 
-  // Get runtime config
-  const { publicRuntimeConfig } = getConfig() || {};
+  // Try to get environment variables from different possible sources
+  const supabaseUrl = cleanEnvVar(
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    window.__NEXT_DATA__?.props?.pageProps?.env?.NEXT_PUBLIC_SUPABASE_URL
+  );
   
-  // Try both runtime config and process.env
-  const supabaseUrl = cleanEnvVar(publicRuntimeConfig?.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL);
-  const supabaseKey = cleanEnvVar(publicRuntimeConfig?.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const supabaseKey = cleanEnvVar(
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    window.__NEXT_DATA__?.props?.pageProps?.env?.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
 
   // More detailed debugging
   console.log('Environment Variables (Debug):', {
-    runtimeConfigUrl: publicRuntimeConfig?.NEXT_PUBLIC_SUPABASE_URL,
     processEnvUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    windowDataUrl: window.__NEXT_DATA__?.props?.pageProps?.env?.NEXT_PUBLIC_SUPABASE_URL,
     cleanedUrl: supabaseUrl,
-    hasRuntimeKey: !!publicRuntimeConfig?.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     hasProcessKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    hasWindowKey: !!window.__NEXT_DATA__?.props?.pageProps?.env?.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     cleanedKeyLength: supabaseKey.length
   });
 
   if (!supabaseUrl || !supabaseKey) {
+    console.error('Missing Supabase configuration. Available environment:', {
+      processEnv: process.env,
+      windowData: window.__NEXT_DATA__?.props?.pageProps?.env
+    });
     throw new Error(
       `Missing required Supabase environment variables.\nURL: ${supabaseUrl ? 'set' : 'missing'}\nKey: ${supabaseKey ? 'set' : 'missing'}`
     );
-  }
-
-  // Validate URL format
-  try {
-    new URL(supabaseUrl);
-  } catch (e) {
-    console.error('Invalid Supabase URL format:', supabaseUrl);
-    throw new Error('Invalid Supabase URL format. Please check NEXT_PUBLIC_SUPABASE_URL');
   }
 
   return createClient(supabaseUrl, supabaseKey, {

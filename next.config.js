@@ -2,11 +2,8 @@
 const nextConfig = {
   output: 'standalone',
   swcMinify: true,
-  // Disable static generation for pages that need Supabase data
-  experimental: {
-    // This will allow server-side rendering with environment variables
-    serverActions: true,
-  },
+  // Remove experimental.serverActions as it's now default
+  experimental: {},
   // Add environment variables that should be available at build time
   env: {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
