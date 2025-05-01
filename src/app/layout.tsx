@@ -4,7 +4,6 @@ import "./globals.css";
 import { Toaster } from "../components/ui/toaster";
 import { Navigation } from "@/components/navigation";
 import { AuthProvider } from "@/components/AuthProvider";
-import { getEnvVars } from "@/lib/env";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -46,14 +45,15 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Get environment variables
-  const env = getEnvVars();
+  const env = {
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  };
   
   return (
     <html lang="de">
       <head>
         <script
-          id="env-script"
           dangerouslySetInnerHTML={{
             __html: `window.ENV = ${JSON.stringify(env)}`,
           }}
