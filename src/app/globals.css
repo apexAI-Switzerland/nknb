@@ -75,8 +75,9 @@
   }
 
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border ring-ring/50;
   }
+  
   body {
     @apply bg-background text-foreground;
   }
