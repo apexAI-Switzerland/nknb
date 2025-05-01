@@ -156,6 +156,21 @@ function ProductList() {
   );
 }
 
+// Add this component temporarily for debugging
+const DebugEnv = () => {
+  return (
+    <div style={{ padding: '20px', background: '#f5f5f5', margin: '20px 0' }}>
+      <h3>Environment Debug</h3>
+      <pre>
+        {JSON.stringify({
+          NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || 'not set',
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'set (hidden)' : 'not set',
+        }, null, 2)}
+      </pre>
+    </div>
+  );
+};
+
 export default function Home() {
   return (
     <main className="flex flex-col items-center justify-start min-h-screen w-full px-4 pb-16">
@@ -179,6 +194,7 @@ export default function Home() {
 
         <ProductList />
       </div>
+      <DebugEnv />
     </main>
   );
 }
