@@ -50,7 +50,7 @@ interface IngredientRelation {
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<ProduktMaster[]>([])
-  const [ingredients] = useState<ZutatenMaster[]>([])
+  const [ingredients, setIngredients] = useState<ZutatenMaster[]>([])
   const [nutritionalValues, setNutritionalValues] = useState({
     kJ: "0",
     kcal: "0",
@@ -122,6 +122,29 @@ export default function ProductsPage() {
   const [productIngredients, setProductIngredients] = useState<{ [key: number]: IngredientRelation[] }>({});
   const [loadingIngredients, setLoadingIngredients] = useState<{ [key: number]: boolean }>({});
   const [ingredientNames, setIngredientNames] = useState<{ [key: string]: string }>({});
+
+  // Add fetch functions
+  const fetchIngredients = async () => {
+    const { data } = await supabase()
+      .from('ZutatenMaster')
+      .select('*')
+      .order('Name', { ascending: true });
+    setIngredients(data || []);
+  };
+
+  const fetchProducts = async () => {
+    const { data } = await supabase()
+      .from('ProduktMaster')
+      .select('*')
+      .order('Produktname', { ascending: true });
+    setProducts(data || []);
+  };
+
+  // Add useEffect to fetch data on component mount
+  useEffect(() => {
+    fetchIngredients();
+    fetchProducts();
+  }, []);
 
   // Wrap calculateNutrients in useCallback to fix the warning
   const calculateNutrients = useCallback((formIngredients: ProductFormValues['ingredients']) => {
@@ -243,25 +266,6 @@ export default function ProductsPage() {
     form.setValue(`ingredients.${index}.IngredientID`, "");
     calculateNutrients(form.getValues('ingredients'));
   };
-
-  async function fetchProducts() {
-    try {
-      const { data, error } = await supabase()
-        .from('ProduktMaster')
-        .select('*')
-        .order('ID', { ascending: false })
-
-      if (error) throw error
-      setProducts(data || [])
-    } catch (error) {
-      console.error('Error fetching products:', error)
-      toast({
-        title: "Error",
-        description: "Failed to fetch products",
-        variant: "destructive",
-      })
-    }
-  }
 
   async function onSubmit(data: ProductFormValues) {
     try {
