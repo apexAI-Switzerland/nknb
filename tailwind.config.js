@@ -2,9 +2,9 @@
 module.exports = {
   darkMode: ["class"],
   content: [
-    './pages/**/*.{ts,tsx}',
-    './components/**/*.{ts,tsx}',
-    './app/**/*.{ts,tsx}',
+    './src/pages/**/*.{ts,tsx}',
+    './src/components/**/*.{ts,tsx}',
+    './src/app/**/*.{ts,tsx}',
     './src/**/*.{ts,tsx}',
   ],
   theme: {
@@ -17,6 +17,8 @@ module.exports = {
     },
     extend: {
       colors: {
+        'naturkostbar-brown': 'var(--naturkostbar-brown)',
+        'naturkostbar-red': 'var(--naturkostbar-red)',
         border: "var(--border)",
         input: "var(--input)",
         ring: "var(--ring)",
