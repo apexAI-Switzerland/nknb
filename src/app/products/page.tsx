@@ -873,14 +873,12 @@ export default function ProductsPage() {
                         {!loadingIngredients[product.ID] && productIngredients[product.ID] && productIngredients[product.ID].length > 0 ? (
                           fetchIngredientNames(productIngredients[product.ID]),
                           <ul className="mb-4 list-disc list-inside">
-                            {/* Show decomposed ingredient list */}
                             {productIngredients[product.ID].map(ing => (
                               ing.IngredientType === 'ingredient' ? (
                                 <li key={ing.ID}>
                                   {ingredientNames[`ingredient:${ing.IngredientID}`] || `Zutat: ${ing.IngredientID}`} – <b>{ing.Amount} g</b>
                                 </li>
                               ) : (
-                                // For product ingredients, show their decomposed ingredients
                                 <DecomposedIngredientList key={ing.ID} productId={ing.IngredientID} amount={ing.Amount} />
                               )
                             ))}
@@ -891,64 +889,110 @@ export default function ProductsPage() {
                           {/* Grundlegende Informationen */}
                           <div>
                             <div className="font-semibold mb-1">Grundlegende Informationen</div>
-                            <div>Energie: <b>{parseNutritionalValue(product.kJ).toFixed(1)} kJ</b> / <b>{parseNutritionalValue(product.kcal).toFixed(1)} kcal</b></div>
-                            <div>Fett: <b>{parseNutritionalValue(product.Fett).toFixed(1)} g</b></div>
-                            <div>- gesättigt: <b>{parseNutritionalValue(product["davon gesättigte Fettsäuren"]).toFixed(1)} g</b></div>
-                            <div>- einfach ungesättigt: <b>{parseNutritionalValue(product["davon einfach ungesättigte Fettsäuren"]).toFixed(1)} g</b></div>
-                            <div>- mehrfach ungesättigt: <b>{parseNutritionalValue(product["davon mehrfach ungesättigte Fettsäuren"]).toFixed(1)} g</b></div>
-                            <div>Kohlenhydrate: <b>{parseNutritionalValue(product.Kohlenhydrate).toFixed(1)} g</b></div>
-                            <div>- davon Zucker: <b>{parseNutritionalValue(product["davon Zucker"]).toFixed(1)} g</b></div>
-                            <div>Ballaststoffe: <b>{parseNutritionalValue(product.Ballaststoffe).toFixed(1)} g</b></div>
-                            <div>Eiweiß: <b>{parseNutritionalValue(product.Eiweiss).toFixed(1)} g</b></div>
-                            <div>Salz: <b>{parseNutritionalValue(product.Salz).toFixed(1)} g</b></div>
+                            {(() => {
+                              const keys = [
+                                "kJ", "kcal", "Fett", "davon gesättigte Fettsäuren", "davon einfach ungesättigte Fettsäuren", "davon mehrfach ungesättigte Fettsäuren",
+                                "Kohlenhydrate", "davon Zucker", "Ballaststoffe", "Eiweiss", "Salz"
+                              ];
+                              return keys.filter(key => parseNutritionalValue(product[key]) > 0).map(key => (
+                                <div key={key}>
+                                  {key === "kJ"
+                                    ? `Energie: ${parseNutritionalValue(product.kJ).toFixed(1)} kJ / ${parseNutritionalValue(product.kcal).toFixed(1)} kcal`
+                                    : key === "Fett"
+                                    ? `Fett: ${parseNutritionalValue(product.Fett).toFixed(1)} g`
+                                    : key === "davon gesättigte Fettsäuren"
+                                    ? `- gesättigt: ${parseNutritionalValue(product["davon gesättigte Fettsäuren"]).toFixed(1)} g`
+                                    : key === "davon einfach ungesättigte Fettsäuren"
+                                    ? `- einfach ungesättigt: ${parseNutritionalValue(product["davon einfach ungesättigte Fettsäuren"]).toFixed(1)} g`
+                                    : key === "davon mehrfach ungesättigte Fettsäuren"
+                                    ? `- mehrfach ungesättigt: ${parseNutritionalValue(product["davon mehrfach ungesättigte Fettsäuren"]).toFixed(1)} g`
+                                    : key === "Kohlenhydrate"
+                                    ? `Kohlenhydrate: ${parseNutritionalValue(product.Kohlenhydrate).toFixed(1)} g`
+                                    : key === "davon Zucker"
+                                    ? `- davon Zucker: ${parseNutritionalValue(product["davon Zucker"]).toFixed(1)} g`
+                                    : key === "Ballaststoffe"
+                                    ? `Ballaststoffe: ${parseNutritionalValue(product.Ballaststoffe).toFixed(1)} g`
+                                    : key === "Eiweiss"
+                                    ? `Eiweiß: ${parseNutritionalValue(product.Eiweiss).toFixed(1)} g`
+                                    : key === "Salz"
+                                    ? `Salz: ${parseNutritionalValue(product.Salz).toFixed(1)} g`
+                                    : null}
+                                </div>
+                              ));
+                            })()}
                           </div>
                           {/* Essentielle Fettsäuren */}
                           <div>
                             <div className="font-semibold mb-1">Essentielle Fettsäuren</div>
-                            <div>Omega-6-Fettsäuren: <b>{parseNutritionalValue(product["mehrfachungesättigte Fettsäuren (n-6)"]).toFixed(1)} g</b></div>
-                            <div>Linolsäure (Omega-6): <b>{parseNutritionalValue(product["Linolsäure (Omega-6-Fettsäuren)"]).toFixed(1)} g</b></div>
-                            <div>Alpha-Linolensäure (Omega-3): <b>{parseNutritionalValue(product["Alpha-Linolensäure (n-3) Omega3"]).toFixed(1)} g</b></div>
-                            <div>EPA + DHA: <b>{parseNutritionalValue(product["Summe von Eicosapentaensäure und  Docosahexaensäure (EPA + DH"]).toFixed(1)} g</b></div>
+                            {(() => {
+                              const keys = [
+                                "mehrfachungesättigte Fettsäuren (n-6)", "Linolsäure (Omega-6-Fettsäuren)", "Alpha-Linolensäure (n-3) Omega3", "Summe von Eicosapentaensäure und  Docosahexaensäure (EPA + DH"
+                              ];
+                              return keys.filter(key => parseNutritionalValue(product[key]) > 0).map(key => (
+                                <div key={key}>
+                                  {key === "mehrfachungesättigte Fettsäuren (n-6)"
+                                    ? `Omega-6-Fettsäuren: ${parseNutritionalValue(product[key]).toFixed(1)} g`
+                                    : key === "Linolsäure (Omega-6-Fettsäuren)"
+                                    ? `Linolsäure (Omega-6): ${parseNutritionalValue(product[key]).toFixed(1)} g`
+                                    : key === "Alpha-Linolensäure (n-3) Omega3"
+                                    ? `Alpha-Linolensäure (Omega-3): ${parseNutritionalValue(product[key]).toFixed(1)} g`
+                                    : key === "Summe von Eicosapentaensäure und  Docosahexaensäure (EPA + DH"
+                                    ? `EPA + DHA: ${parseNutritionalValue(product[key]).toFixed(1)} g`
+                                    : null}
+                                </div>
+                              ));
+                            })()}
                           </div>
                         </div>
                         {/* Vitamine */}
                         <details className="mt-2">
                           <summary className="font-semibold cursor-pointer">Vitamine</summary>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-                            <div>Vitamin A: <b>{parseNutritionalValue(product["Vitamin A"]).toFixed(1)}</b></div>
-                            <div>B-Carotin: <b>{parseNutritionalValue(product["B-Carotin (Provitamin A)"]).toFixed(1)}</b></div>
-                            <div>Vitamin D: <b>{parseNutritionalValue(product["Vitamin D"]).toFixed(1)}</b></div>
-                            <div>Vitamin E: <b>{parseNutritionalValue(product["Vitamin E"]).toFixed(1)}</b></div>
-                            <div>Vitamin C: <b>{parseNutritionalValue(product["Vitamin C"]).toFixed(1)}</b></div>
-                            <div>Vitamin K: <b>{parseNutritionalValue(product["Vitamin K"]).toFixed(1)}</b></div>
-                            <div>Vitamin B1 (Thiamin): <b>{parseNutritionalValue(product["Vitamin B1 (Thiamin)"]).toFixed(1)}</b></div>
-                            <div>Vitamin B2 (Riboflavin): <b>{parseNutritionalValue(product["Vitamin B2 (Riboflavin)"]).toFixed(1)}</b></div>
-                            <div>Vitamin B3 (Niacin): <b>{parseNutritionalValue(product["Vitamin B3  Niacin (Vitamin PP)"]).toFixed(1)}</b></div>
-                            <div>Vitamin B6: <b>{parseNutritionalValue(product["Vitamin B6"]).toFixed(1)}</b></div>
-                            <div>Folsäure: <b>{parseNutritionalValue(product["Folsäure/Folacin"]).toFixed(1)}</b></div>
-                            <div>Vitamin B12: <b>{parseNutritionalValue(product["Vitamin B12"]).toFixed(1)}</b></div>
-                            <div>Biotin: <b>{parseNutritionalValue(product["Biotin"]).toFixed(1)}</b></div>
-                            <div>Pantothensäure: <b>{parseNutritionalValue(product["Pantothensäure"]).toFixed(1)}</b></div>
+                            {(() => {
+                              const keys = [
+                                "Vitamin A", "B-Carotin (Provitamin A)", "Vitamin D", "Vitamin E", "Vitamin C", "Vitamin K",
+                                "Vitamin B1 (Thiamin)", "Vitamin B2 (Riboflavin)", "Vitamin B3  Niacin (Vitamin PP)", "Vitamin B6",
+                                "Folsäure/Folacin", "Vitamin B12", "Biotin", "Pantothensäure"
+                              ];
+                              return keys.filter(key => parseNutritionalValue(product[key]) > 0).map(key => (
+                                <div key={key}>
+                                  {key.replace(/\s+/g, ' ')}: <b>{parseNutritionalValue(product[key]).toFixed(1)}</b>
+                                </div>
+                              ));
+                            })()}
                           </div>
                         </details>
                         {/* Mineralstoffe */}
                         <details className="mt-2">
                           <summary className="font-semibold cursor-pointer">Mineralstoffe</summary>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-                            <div>Calcium: <b>{parseNutritionalValue(product["Calcium"]).toFixed(1)}</b></div>
-                            <div>Phosphor: <b>{parseNutritionalValue(product["Phosphor"]).toFixed(1)}</b></div>
-                            <div>Eisen: <b>{parseNutritionalValue(product["Eisen"]).toFixed(1)}</b></div>
-                            <div>Magnesium: <b>{parseNutritionalValue(product["Magnesium"]).toFixed(1)}</b></div>
-                            <div>Zink: <b>{parseNutritionalValue(product["Zink"]).toFixed(1)}</b></div>
-                            <div>Jod: <b>{parseNutritionalValue(product["Jod"]).toFixed(1)}</b></div>
+                            {(() => {
+                              const keys = [
+                                "Calcium", "Phosphor", "Eisen", "Magnesium", "Zink", "Jod", "Selen", "Kupfer", "Mangan", "Chrom", "Molybdän", "Fluorid", "Kalium", "Chlorid"
+                              ];
+                              return keys.filter(key => parseNutritionalValue(product[key]) > 0).map(key => (
+                                <div key={key}>
+                                  {key.replace(/\s+/g, ' ')}: <b>{parseNutritionalValue(product[key]).toFixed(1)}</b>
+                                </div>
+                              ));
+                            })()}
                           </div>
                         </details>
                         {/* Sonstige Nährstoffe */}
                         <details className="mt-2">
                           <summary className="font-semibold cursor-pointer">Sonstige Nährstoffe</summary>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-                            <div>Cholin: <b>{parseNutritionalValue(product["Cholin"]).toFixed(1)}</b></div>
-                            <div>Betain: <b>{parseNutritionalValue(product["Betain"]).toFixed(1)}</b></div>
+                            {(() => {
+                              const keys = [
+                                "Cholin", "Betain", "Lycopin", "mehrfachungesättigte Fettsäuren (n-6)", "Alpha-Linolensäure (n-3) Omega3",
+                                "Summe von Eicosapentaensäure und  Docosahexaensäure (EPA + DH", "Linolsäure (Omega-6-Fettsäuren)"
+                              ];
+                              return keys.filter(key => parseNutritionalValue(product[key]) > 0).map(key => (
+                                <div key={key}>
+                                  {key.replace(/\s+/g, ' ')}: <b>{parseNutritionalValue(product[key]).toFixed(1)}</b>
+                                </div>
+                              ));
+                            })()}
                           </div>
                         </details>
                       </div>
