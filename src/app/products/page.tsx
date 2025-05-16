@@ -484,10 +484,10 @@ export default function ProductsPage() {
         .from('ProduktMaster')
         .select('*');
       if (error) throw error;
-      if (!data) return;
-      // Only export relevant columns
-      const columns = ['Produktname', 'kcal', 'Fett', 'Kohlenhydrate', 'Eiweiss'];
-      const headers = ['Produktname', 'kcal', 'Fett (g)', 'Kohlenhydrate (g)', 'Eiweiß (g)'];
+      if (!data || data.length === 0) return;
+      // Export all columns
+      const columns = Object.keys(data[0]);
+      const headers = columns;
       const csv = arrayToCSV(data, columns, headers);
       const blob = new Blob([csv], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
