@@ -932,25 +932,25 @@ export default function ProductsPage() {
                               return keys.filter(key => parseNutritionalValue(product[key]) > 0).map(key => (
                                 <div key={key}>
                                   {key === "kJ"
-                                    ? `Energie: ${parseNutritionalValue(product.kJ).toFixed(1)} kJ / ${parseNutritionalValue(product.kcal).toFixed(1)} kcal`
+                                    ? <>Energie: <b>{parseNutritionalValue(product.kJ).toFixed(1)} kJ / {parseNutritionalValue(product.kcal).toFixed(1)} kcal</b></>
                                     : key === "Fett"
-                                    ? `Fett: ${parseNutritionalValue(product.Fett).toFixed(1)} g`
+                                    ? <>Fett: <b>{parseNutritionalValue(product.Fett).toFixed(1)} g</b></>
                                     : key === "davon gesättigte Fettsäuren"
-                                    ? `- gesättigt: ${parseNutritionalValue(product["davon gesättigte Fettsäuren"]).toFixed(1)} g`
+                                    ? <>- gesättigt: <b>{parseNutritionalValue(product["davon gesättigte Fettsäuren"]).toFixed(1)} g</b></>
                                     : key === "davon einfach ungesättigte Fettsäuren"
-                                    ? `- einfach ungesättigt: ${parseNutritionalValue(product["davon einfach ungesättigte Fettsäuren"]).toFixed(1)} g`
+                                    ? <>- einfach ungesättigt: <b>{parseNutritionalValue(product["davon einfach ungesättigte Fettsäuren"]).toFixed(1)} g</b></>
                                     : key === "davon mehrfach ungesättigte Fettsäuren"
-                                    ? `- mehrfach ungesättigt: ${parseNutritionalValue(product["davon mehrfach ungesättigte Fettsäuren"]).toFixed(1)} g`
+                                    ? <>- mehrfach ungesättigt: <b>{parseNutritionalValue(product["davon mehrfach ungesättigte Fettsäuren"]).toFixed(1)} g</b></>
                                     : key === "Kohlenhydrate"
-                                    ? `Kohlenhydrate: ${parseNutritionalValue(product.Kohlenhydrate).toFixed(1)} g`
+                                    ? <>Kohlenhydrate: <b>{parseNutritionalValue(product.Kohlenhydrate).toFixed(1)} g</b></>
                                     : key === "davon Zucker"
-                                    ? `- davon Zucker: ${parseNutritionalValue(product["davon Zucker"]).toFixed(1)} g`
+                                    ? <>- davon Zucker: <b>{parseNutritionalValue(product["davon Zucker"]).toFixed(1)} g</b></>
                                     : key === "Ballaststoffe"
-                                    ? `Ballaststoffe: ${parseNutritionalValue(product.Ballaststoffe).toFixed(1)} g`
+                                    ? <>Ballaststoffe: <b>{parseNutritionalValue(product.Ballaststoffe).toFixed(1)} g</b></>
                                     : key === "Eiweiss"
-                                    ? `Eiweiß: ${parseNutritionalValue(product.Eiweiss).toFixed(1)} g`
+                                    ? <>Eiweiß: <b>{parseNutritionalValue(product.Eiweiss).toFixed(1)} g</b></>
                                     : key === "Salz"
-                                    ? `Salz: ${parseNutritionalValue(product.Salz).toFixed(1)} g`
+                                    ? <>Salz: <b>{parseNutritionalValue(product.Salz).toFixed(1)} g</b></>
                                     : null}
                                 </div>
                               ));
