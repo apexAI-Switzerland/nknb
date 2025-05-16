@@ -151,6 +151,14 @@ const nutritionalGroups = {
   ]
 };
 
+// Utility to convert array of objects to CSV
+function arrayToCSV(data: any[], columns: string[], headers: string[]): string {
+  const escape = (val: any) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+  const header = headers.join(',');
+  const rows = data.map(row => columns.map(col => escape(row[col])).join(','));
+  return [header, ...rows].join('\r\n');
+}
+
 export default function IngredientsPage() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
   const [loading, setLoading] = useState(true)
@@ -352,17 +360,46 @@ export default function IngredientsPage() {
     }
   };
 
+  // Export handler
+  const handleExportCSV = async () => {
+    try {
+      const { data, error } = await supabase()
+        .from('ZutatenMaster')
+        .select('*');
+      if (error) throw error;
+      if (!data) return;
+      // Only export relevant columns
+      const columns = ['Name', 'kcal', 'Fett', 'Kohlenhydrate', 'Eiweiss'];
+      const headers = ['Name', 'kcal', 'Fett (g)', 'Kohlenhydrate (g)', 'Eiweiß (g)'];
+      const csv = arrayToCSV(data, columns, headers);
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'zutaten.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast({ title: 'Fehler', description: 'Export fehlgeschlagen', variant: 'destructive' });
+    }
+  };
+
   return (
     <main className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6 naturkostbar-accent">Zutaten</h1>
       
       <div className="mb-8">
-        <Input
-          className="max-w-xl mb-4"
-          placeholder="Zutat suchen..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+        <div className="flex justify-between items-center mb-2">
+          <Input
+            className="max-w-xl mb-4"
+            placeholder="Zutat suchen..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <Button variant="outline" onClick={handleExportCSV}>Export als CSV</Button>
+        </div>
         <div className="overflow-x-auto">
           <table className="min-w-full border rounded bg-white">
             <thead>
