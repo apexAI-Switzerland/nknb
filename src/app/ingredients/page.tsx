@@ -471,8 +471,8 @@ export default function IngredientsPage() {
                 <DialogTitle className="text-2xl">{selectedIngredient.Name}</DialogTitle>
               </DialogHeader>
               {editMode ? (
-                <div className="mt-4">
-                  <div className="space-y-4">
+                <div className="flex flex-col" style={{ maxHeight: "80vh" }}>
+                  <div className="flex-1 overflow-y-auto pr-2" style={{ minHeight: 0 }}>
                     {Object.entries(nutritionalGroups).map(([groupKey, group]) => (
                       <div key={groupKey}>
                         <div className="font-semibold mb-2">{groupKey === 'basic' ? 'Grundwerte' : groupKey === 'vitamins' ? 'Vitamine' : groupKey === 'minerals' ? 'Mineralstoffe' : 'Sonstige'}</div>
@@ -492,7 +492,7 @@ export default function IngredientsPage() {
                       </div>
                     ))}
                   </div>
-                  <DialogFooter className="mt-6">
+                  <DialogFooter className="mt-6 bg-white sticky bottom-0 py-4 z-10">
                     <Button variant="outline" onClick={() => setEditMode(false)}>Abbrechen</Button>
                     <Button onClick={saveEdit}>Speichern</Button>
                   </DialogFooter>
