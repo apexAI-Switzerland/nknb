@@ -28,7 +28,8 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogClose
+  DialogClose,
+  DialogFooter
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
@@ -157,6 +158,11 @@ export default function IngredientsPage() {
   const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [showAll, setShowAll] = useState(false)
+  const [editMode, setEditMode] = useState(false)
+  const [editValues, setEditValues] = useState<Partial<IngredientFormValues>>({})
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [updating, setUpdating] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const form = useForm<IngredientFormValues>({
     resolver: zodResolver(ingredientSchema),
@@ -272,6 +278,80 @@ export default function IngredientsPage() {
     ));
   };
 
+  // Helper to start editing
+  const startEdit = () => {
+    if (!selectedIngredient) return;
+    // Only include fields from ingredientSchema, and convert all values to string or undefined
+    const editable: Partial<IngredientFormValues> = {};
+    Object.keys(ingredientSchema.shape).forEach((key) => {
+      const value = selectedIngredient[key as keyof Ingredient];
+      editable[key as keyof IngredientFormValues] = value !== undefined && value !== null ? String(value) : undefined;
+    });
+    setEditValues(editable);
+    setEditMode(true);
+  };
+
+  // Helper to track changes
+  const handleEditChange = (field: string, value: string) => {
+    setEditValues((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // Save only changed fields
+  const saveEdit = async () => {
+    if (!selectedIngredient) return;
+    setUpdating(true);
+    try {
+      // Only send fields that changed
+      const changedFields: Partial<IngredientFormValues> = {};
+      Object.keys(editValues).forEach((key) => {
+        const typedKey = key as keyof IngredientFormValues;
+        if (editValues[typedKey] !== selectedIngredient[typedKey]) {
+          changedFields[typedKey] = editValues[typedKey];
+        }
+      });
+      if (Object.keys(changedFields).length === 0) {
+        toast({ title: "Keine Änderungen", description: "Es wurden keine Felder geändert." });
+        setEditMode(false);
+        setUpdating(false);
+        return;
+      }
+      const { error } = await supabase()
+        .from('ZutatenMaster')
+        .update(changedFields)
+        .eq('ID', selectedIngredient.ID);
+      if (error) throw error;
+      toast({ title: "Erfolg", description: "Zutat aktualisiert." });
+      setEditMode(false);
+      setIsDialogOpen(false);
+      fetchIngredients();
+    } catch (error) {
+      toast({ title: "Fehler", description: "Update fehlgeschlagen", variant: "destructive" });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  // Delete logic
+  const confirmDelete = async () => {
+    if (!selectedIngredient) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase()
+        .from('ZutatenMaster')
+        .delete()
+        .eq('ID', selectedIngredient.ID);
+      if (error) throw error;
+      toast({ title: "Erfolg", description: "Zutat gelöscht." });
+      setIsDialogOpen(false);
+      setShowDeleteDialog(false);
+      fetchIngredients();
+    } catch (error) {
+      toast({ title: "Fehler", description: "Löschen fehlgeschlagen", variant: "destructive" });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <main className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6 naturkostbar-accent">Zutaten</h1>
@@ -383,110 +463,154 @@ export default function IngredientsPage() {
       </Card>
 
       {/* Ingredient Detail Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={(open: boolean) => setIsDialogOpen(open)}>
+      <Dialog open={isDialogOpen} onOpenChange={(open: boolean) => { setIsDialogOpen(open); setEditMode(false); }}>
         <DialogContent className="max-w-3xl">
           {selectedIngredient && (
             <>
               <DialogHeader>
                 <DialogTitle className="text-2xl">{selectedIngredient.Name}</DialogTitle>
               </DialogHeader>
-              <div className="mt-4">
-                <Tabs defaultValue="basic">
-                  <TabsList>
-                    <TabsTrigger value="basic">Grundwerte</TabsTrigger>
-                    <TabsTrigger value="vitamins">Vitamine</TabsTrigger>
-                    <TabsTrigger value="minerals">Mineralstoffe</TabsTrigger>
-                    <TabsTrigger value="others">Sonstige</TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="basic" className="mt-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span>Energie:</span>
-                          <span>{selectedIngredient.kcal} kcal / {selectedIngredient.kJ} kJ</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Fett:</span>
-                          <span>{selectedIngredient.Fett}g</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>davon gesättigte Fettsäuren:</span>
-                          <span>{selectedIngredient["davon gesättigte Fettsäuren"]}g</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>davon einfach ungesättigte Fettsäuren:</span>
-                          <span>{selectedIngredient["davon einfach ungesättigte Fettsäuren"]}g</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>davon mehrfach ungesättigte Fettsäuren:</span>
-                          <span>{selectedIngredient["davon mehrfach ungesättigte Fettsäuren"]}g</span>
+              {editMode ? (
+                <div className="mt-4">
+                  <div className="space-y-4">
+                    {Object.entries(nutritionalGroups).map(([groupKey, group]) => (
+                      <div key={groupKey}>
+                        <div className="font-semibold mb-2">{groupKey === 'basic' ? 'Grundwerte' : groupKey === 'vitamins' ? 'Vitamine' : groupKey === 'minerals' ? 'Mineralstoffe' : 'Sonstige'}</div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {group.map(field => (
+                            <div key={field.name}>
+                              <label className="block text-sm font-medium mb-1">{field.label}</label>
+                              <Input
+                                type={field.name === 'Name' ? 'text' : 'number'}
+                                value={editValues[field.name as keyof IngredientFormValues] ?? ''}
+                                onChange={e => handleEditChange(field.name, e.target.value)}
+                                step="0.01"
+                              />
+                            </div>
+                          ))}
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span>Kohlenhydrate:</span>
-                          <span>{selectedIngredient.Kohlenhydrate}g</span>
+                    ))}
+                  </div>
+                  <DialogFooter className="mt-6">
+                    <Button variant="outline" onClick={() => setEditMode(false)}>Abbrechen</Button>
+                    <Button onClick={saveEdit}>Speichern</Button>
+                  </DialogFooter>
+                </div>
+              ) : (
+                <>
+                  <div className="mt-4">
+                    <Tabs defaultValue="basic">
+                      <TabsList>
+                        <TabsTrigger value="basic">Grundwerte</TabsTrigger>
+                        <TabsTrigger value="vitamins">Vitamine</TabsTrigger>
+                        <TabsTrigger value="minerals">Mineralstoffe</TabsTrigger>
+                        <TabsTrigger value="others">Sonstige</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="basic" className="mt-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <div className="flex justify-between">
+                              <span>Energie:</span>
+                              <span>{selectedIngredient.kcal} kcal / {selectedIngredient.kJ} kJ</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Fett:</span>
+                              <span>{selectedIngredient.Fett}g</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>davon gesättigte Fettsäuren:</span>
+                              <span>{selectedIngredient["davon gesättigte Fettsäuren"]}g</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>davon einfach ungesättigte Fettsäuren:</span>
+                              <span>{selectedIngredient["davon einfach ungesättigte Fettsäuren"]}g</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>davon mehrfach ungesättigte Fettsäuren:</span>
+                              <span>{selectedIngredient["davon mehrfach ungesättigte Fettsäuren"]}g</span>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex justify-between">
+                              <span>Kohlenhydrate:</span>
+                              <span>{selectedIngredient.Kohlenhydrate}g</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>davon Zucker:</span>
+                              <span>{selectedIngredient["davon Zucker"]}g</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Ballaststoffe:</span>
+                              <span>{selectedIngredient.Ballaststoffe}g</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Eiweiß:</span>
+                              <span>{selectedIngredient.Eiweiss}g</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Salz:</span>
+                              <span>{selectedIngredient.Salz}g</span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex justify-between">
-                          <span>davon Zucker:</span>
-                          <span>{selectedIngredient["davon Zucker"]}g</span>
+                      </TabsContent>
+                      <TabsContent value="vitamins" className="mt-4">
+                        <div className="grid grid-cols-2 gap-2">
+                          {nutritionalGroups.vitamins.map(field => (
+                            <div key={field.name} className="flex justify-between">
+                              <span>{field.label}:</span>
+                              <span>{selectedIngredient[field.name as keyof Ingredient] || '0'}</span>
+                            </div>
+                          ))}
                         </div>
-                        <div className="flex justify-between">
-                          <span>Ballaststoffe:</span>
-                          <span>{selectedIngredient.Ballaststoffe}g</span>
+                      </TabsContent>
+                      <TabsContent value="minerals" className="mt-4">
+                        <div className="grid grid-cols-2 gap-2">
+                          {nutritionalGroups.minerals.map(field => (
+                            <div key={field.name} className="flex justify-between">
+                              <span>{field.label}:</span>
+                              <span>{selectedIngredient[field.name as keyof Ingredient] || '0'}</span>
+                            </div>
+                          ))}
                         </div>
-                        <div className="flex justify-between">
-                          <span>Eiweiß:</span>
-                          <span>{selectedIngredient.Eiweiss}g</span>
+                      </TabsContent>
+                      <TabsContent value="others" className="mt-4">
+                        <div className="grid grid-cols-2 gap-2">
+                          {nutritionalGroups.others.map(field => (
+                            <div key={field.name} className="flex justify-between">
+                              <span>{field.label}:</span>
+                              <span>{selectedIngredient[field.name as keyof Ingredient] || '0'}</span>
+                            </div>
+                          ))}
                         </div>
-                        <div className="flex justify-between">
-                          <span>Salz:</span>
-                          <span>{selectedIngredient.Salz}g</span>
-                        </div>
-                      </div>
-                    </div>
-                  </TabsContent>
-                  
-                  <TabsContent value="vitamins" className="mt-4">
-                    <div className="grid grid-cols-2 gap-2">
-                      {nutritionalGroups.vitamins.map(field => (
-                        <div key={field.name} className="flex justify-between">
-                          <span>{field.label}:</span>
-                          <span>{selectedIngredient[field.name as keyof Ingredient] || '0'}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </TabsContent>
-                  
-                  <TabsContent value="minerals" className="mt-4">
-                    <div className="grid grid-cols-2 gap-2">
-                      {nutritionalGroups.minerals.map(field => (
-                        <div key={field.name} className="flex justify-between">
-                          <span>{field.label}:</span>
-                          <span>{selectedIngredient[field.name as keyof Ingredient] || '0'}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </TabsContent>
-                  
-                  <TabsContent value="others" className="mt-4">
-                    <div className="grid grid-cols-2 gap-2">
-                      {nutritionalGroups.others.map(field => (
-                        <div key={field.name} className="flex justify-between">
-                          <span>{field.label}:</span>
-                          <span>{selectedIngredient[field.name as keyof Ingredient] || '0'}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </div>
-              <DialogClose asChild>
-                <Button className="mt-4">Schließen</Button>
-              </DialogClose>
+                      </TabsContent>
+                    </Tabs>
+                  </div>
+                  <DialogFooter className="mt-6">
+                    <Button variant="outline" onClick={() => setShowDeleteDialog(true)} color="red">Löschen</Button>
+                    <Button onClick={startEdit}>Bearbeiten</Button>
+                    <DialogClose asChild>
+                      <Button>Schließen</Button>
+                    </DialogClose>
+                  </DialogFooter>
+                </>
+              )}
             </>
           )}
+        </DialogContent>
+      </Dialog>
+      {/* Delete confirmation dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Zutat löschen?</DialogTitle>
+          </DialogHeader>
+          <p>Möchten Sie die Zutat wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)} disabled={deleting}>Abbrechen</Button>
+            <Button variant="destructive" onClick={confirmDelete} disabled={deleting}>Löschen</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </main>
