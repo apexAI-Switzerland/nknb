@@ -150,4 +150,67 @@ export const calculateTotalNutritionalValues = async (
     });
 
   return totalValues;
+};
+
+// Recursively decompose a product into its base ingredients with calculated amounts
+export const decomposeProductIngredients = async (
+  productId: number,
+  amount: number
+): Promise<Array<{ name: string; amount: number }>> => {
+  // Fetch the ingredients for this product
+  const { data: productIngredients, error } = await supabase()
+    .from('ProductIngredients')
+    .select('*')
+    .eq('ProductID', productId);
+  if (error || !productIngredients) return [];
+
+  // Fetch all ingredient and product details in one go
+  const ingredientIds = productIngredients
+    .filter((ing: any) => ing.IngredientType === 'ingredient')
+    .map((ing: any) => ing.IngredientID);
+  const productIds = productIngredients
+    .filter((ing: any) => ing.IngredientType === 'product')
+    .map((ing: any) => ing.IngredientID);
+
+  let ingredientDetails: { [id: number]: ZutatenMaster } = {};
+  let productDetails: { [id: number]: ProduktMaster } = {};
+
+  if (ingredientIds.length > 0) {
+    const { data } = await supabase().from('ZutatenMaster').select('ID, Name').in('ID', ingredientIds);
+    if (data) {
+      data.forEach((ing: ZutatenMaster) => { ingredientDetails[ing.ID] = ing; });
+    }
+  }
+  if (productIds.length > 0) {
+    const { data } = await supabase().from('ProduktMaster').select('ID, Produktname').in('ID', productIds);
+    if (data) {
+      data.forEach((prod: ProduktMaster) => { productDetails[prod.ID] = prod; });
+    }
+  }
+
+  // Calculate total amount of the product (sum of all ingredient amounts)
+  const totalProductAmount = productIngredients.reduce((sum: number, ing: any) => sum + (ing.Amount || 0), 0);
+  if (totalProductAmount === 0) return [];
+
+  // Recursively flatten all ingredients
+  let flatIngredients: Array<{ name: string; amount: number }> = [];
+  for (const ing of productIngredients) {
+    const proportionalAmount = (ing.Amount / totalProductAmount) * amount;
+    if (ing.IngredientType === 'ingredient') {
+      const name = ingredientDetails[ing.IngredientID]?.Name || `Zutat ${ing.IngredientID}`;
+      flatIngredients.push({ name, amount: proportionalAmount });
+    } else if (ing.IngredientType === 'product') {
+      // Recursively decompose sub-product
+      const subIngredients = await decomposeProductIngredients(ing.IngredientID, proportionalAmount);
+      flatIngredients = flatIngredients.concat(subIngredients);
+    }
+  }
+
+  // Combine ingredients with the same name
+  const combined: { [name: string]: number } = {};
+  for (const item of flatIngredients) {
+    if (!combined[item.name]) combined[item.name] = 0;
+    combined[item.name] += item.amount;
+  }
+  return Object.entries(combined).map(([name, amount]) => ({ name, amount }));
 }; 

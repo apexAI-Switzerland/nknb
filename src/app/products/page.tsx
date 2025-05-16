@@ -28,6 +28,7 @@ import { supabase, ProduktMaster, ZutatenMaster, parseNutritionalValue } from "@
 import { toast } from "@/components/ui/use-toast"
 import { useState, useEffect, useCallback } from "react"
 import { X } from "lucide-react"
+import { decomposeProductIngredients } from "@/lib/calculations"
 
 const productSchema = z.object({
   Produktname: z.string().min(1, "Name is required"),
@@ -122,6 +123,9 @@ export default function ProductsPage() {
   const [productIngredients, setProductIngredients] = useState<{ [key: number]: IngredientRelation[] }>({});
   const [loadingIngredients, setLoadingIngredients] = useState<{ [key: number]: boolean }>({});
   const [ingredientNames, setIngredientNames] = useState<{ [key: string]: string }>({});
+
+  // Add state for decomposed ingredients
+  const [decomposedIngredients, setDecomposedIngredients] = useState<{ [key: number]: Array<{ name: string; amount: number }> }>({});
 
   // Add fetch functions
   const fetchIngredients = async () => {
@@ -457,6 +461,14 @@ export default function ProductsPage() {
     setIngredientNames(names => ({ ...names, ...newNames }));
   }
 
+  // Helper to get and cache decomposed ingredients for a product
+  const getDecomposedIngredients = async (productId: number, amount: number) => {
+    if (decomposedIngredients[productId]) return decomposedIngredients[productId];
+    const result = await decomposeProductIngredients(productId, amount);
+    setDecomposedIngredients(prev => ({ ...prev, [productId]: result }));
+    return result;
+  };
+
   return (
     <main className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">Produkt erfassen</h1>
@@ -771,10 +783,16 @@ export default function ProductsPage() {
                         {!loadingIngredients[product.ID] && productIngredients[product.ID] && productIngredients[product.ID].length > 0 ? (
                           fetchIngredientNames(productIngredients[product.ID]),
                           <ul className="mb-4 list-disc list-inside">
+                            {/* Show decomposed ingredient list */}
                             {productIngredients[product.ID].map(ing => (
-                              <li key={ing.ID}>
-                                {ingredientNames[`${ing.IngredientType}:${ing.IngredientID}`] || `${ing.IngredientType}: ${ing.IngredientID}`} – <b>{ing.Amount} g</b>
-                              </li>
+                              ing.IngredientType === 'ingredient' ? (
+                                <li key={ing.ID}>
+                                  {ingredientNames[`ingredient:${ing.IngredientID}`] || `Zutat: ${ing.IngredientID}`} – <b>{ing.Amount} g</b>
+                                </li>
+                              ) : (
+                                // For product ingredients, show their decomposed ingredients
+                                <DecomposedIngredientList key={ing.ID} productId={ing.IngredientID} amount={ing.Amount} />
+                              )
                             ))}
                           </ul>
                         ) : !loadingIngredients[product.ID] && <div className="mb-4 text-gray-400">Keine Zutaten gefunden</div>}
@@ -869,4 +887,19 @@ export default function ProductsPage() {
       )}
     </main>
   )
+}
+
+function DecomposedIngredientList({ productId, amount }: { productId: number, amount: number }) {
+  const [ingredients, setIngredients] = useState<Array<{ name: string; amount: number }>>([]);
+  useEffect(() => {
+    decomposeProductIngredients(productId, amount).then(setIngredients);
+  }, [productId, amount]);
+  if (!ingredients.length) return null;
+  return (
+    <>
+      {ingredients.map((item, idx) => (
+        <li key={idx}>{item.name} – <b>{item.amount.toFixed(1)} g</b></li>
+      ))}
+    </>
+  );
 } 
