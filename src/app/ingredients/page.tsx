@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
-import { supabase, NutritionalValues } from "@/lib/supabase"
+import { supabase, NutritionalValues, parseNutritionalValue } from "@/lib/supabase"
 import { toast } from "@/components/ui/use-toast"
 import { useState, useEffect } from "react"
 import { 
@@ -283,44 +283,36 @@ export default function IngredientsPage() {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {loading ? (
-            <p>Loading...</p>
-          ) : displayIngredients.length > 0 ? (
-            displayIngredients.map((ingredient) => (
-              <Card 
-                key={ingredient.ID} 
-                className="cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() => openIngredientDetails(ingredient)}
-              >
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg naturkostbar-accent">{ingredient.Name}</CardTitle>
-                </CardHeader>
-                <CardContent className="pb-2">
-                  <div className="grid grid-cols-2 gap-y-1 text-sm">
-                    <div className="text-muted-foreground">Energie</div>
-                    <div className="text-right">
-                      {ingredient.kcal} kcal / {ingredient.kJ} kJ
-                    </div>
-                    
-                    <div className="text-muted-foreground">Fett</div>
-                    <div className="text-right">{ingredient.Fett}g</div>
-                    
-                    <div className="text-muted-foreground">Kohlenhydrate</div>
-                    <div className="text-right">{ingredient.Kohlenhydrate}g</div>
-                    
-                    <div className="text-muted-foreground">Eiweiß</div>
-                    <div className="text-right">{ingredient.Eiweiss}g</div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          ) : (
-            <p>No ingredients found</p>
-          )}
+        <div className="overflow-x-auto">
+          <table className="min-w-full border rounded bg-white">
+            <thead>
+              <tr className="bg-gray-50">
+                <th className="px-4 py-2 text-left font-semibold">Name</th>
+                <th className="px-4 py-2 text-left font-semibold">kcal</th>
+                <th className="px-4 py-2 text-left font-semibold">Fett (g)</th>
+                <th className="px-4 py-2 text-left font-semibold">Kohlenhydrate (g)</th>
+                <th className="px-4 py-2 text-left font-semibold">Eiweiß (g)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={5} className="text-center py-8 text-gray-400">Loading...</td></tr>
+              ) : displayIngredients.length > 0 ? (
+                displayIngredients.map((ingredient) => (
+                  <tr key={ingredient.ID} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => openIngredientDetails(ingredient)}>
+                    <td className="px-4 py-2 font-medium">{ingredient.Name}</td>
+                    <td className="px-4 py-2">{parseNutritionalValue(ingredient.kcal).toFixed(1)}</td>
+                    <td className="px-4 py-2">{parseNutritionalValue(ingredient.Fett).toFixed(1)}</td>
+                    <td className="px-4 py-2">{parseNutritionalValue(ingredient.Kohlenhydrate).toFixed(1)}</td>
+                    <td className="px-4 py-2">{parseNutritionalValue(ingredient.Eiweiss).toFixed(1)}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr><td colSpan={5} className="text-center py-8 text-gray-400">No ingredients found</td></tr>
+              )}
+            </tbody>
+          </table>
         </div>
-        
         {hasMoreIngredients && (
           <Button 
             variant="outline" 
@@ -330,7 +322,6 @@ export default function IngredientsPage() {
             Alle Zutaten anzeigen ({filteredIngredients.length})
           </Button>
         )}
-        
         {showAll && !searchTerm && (
           <Button 
             variant="outline" 
