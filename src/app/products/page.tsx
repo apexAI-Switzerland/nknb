@@ -627,25 +627,53 @@ export default function ProductsPage() {
                   {/* Basic nutritional information */}
                   <div>
                     <h4 className="font-medium mb-1">Grundlegende Informationen</h4>
-                    <p>Energie: <span className="font-semibold">{parseNutritionalValue(nutritionalValues.kJ).toFixed(1)} kJ / {parseNutritionalValue(nutritionalValues.kcal).toFixed(1)} kcal</span></p>
-                    <p>Fett: <span className="font-semibold">{parseNutritionalValue(nutritionalValues.Fett).toFixed(1)} g</span></p>
-                    <p>- gesättigt: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["davon gesättigte Fettsäuren"]).toFixed(1)} g</span></p>
-                    <p>- einfach ungesättigt: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["davon einfach ungesättigte Fettsäuren"]).toFixed(1)} g</span></p>
-                    <p>- mehrfach ungesättigt: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["davon mehrfach ungesättigte Fettsäuren"]).toFixed(1)} g</span></p>
-                    <p>Kohlenhydrate: <span className="font-semibold">{parseNutritionalValue(nutritionalValues.Kohlenhydrate).toFixed(1)} g</span></p>
-                    <p>- davon Zucker: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["davon Zucker"]).toFixed(1)} g</span></p>
-                    <p>Ballaststoffe: <span className="font-semibold">{parseNutritionalValue(nutritionalValues.Ballaststoffe).toFixed(1)} g</span></p>
-                    <p>Eiweiß: <span className="font-semibold">{parseNutritionalValue(nutritionalValues.Eiweiss).toFixed(1)} g</span></p>
-                    <p>Salz: <span className="font-semibold">{parseNutritionalValue(nutritionalValues.Salz).toFixed(1)} g</span></p>
+                    {parseNutritionalValue(nutritionalValues.kJ) > 0 && (
+                      <p>Energie: <span className="font-semibold">{parseNutritionalValue(nutritionalValues.kJ).toFixed(1)} kJ / {parseNutritionalValue(nutritionalValues.kcal).toFixed(1)} kcal</span></p>
+                    )}
+                    {parseNutritionalValue(nutritionalValues.Fett) > 0 && (
+                      <p>Fett: <span className="font-semibold">{parseNutritionalValue(nutritionalValues.Fett).toFixed(1)} g</span></p>
+                    )}
+                    {parseNutritionalValue(nutritionalValues["davon gesättigte Fettsäuren"]) > 0 && (
+                      <p>- gesättigt: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["davon gesättigte Fettsäuren"]).toFixed(1)} g</span></p>
+                    )}
+                    {parseNutritionalValue(nutritionalValues["davon einfach ungesättigte Fettsäuren"]) > 0 && (
+                      <p>- einfach ungesättigt: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["davon einfach ungesättigte Fettsäuren"]).toFixed(1)} g</span></p>
+                    )}
+                    {parseNutritionalValue(nutritionalValues["davon mehrfach ungesättigte Fettsäuren"]) > 0 && (
+                      <p>- mehrfach ungesättigt: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["davon mehrfach ungesättigte Fettsäuren"]).toFixed(1)} g</span></p>
+                    )}
+                    {parseNutritionalValue(nutritionalValues.Kohlenhydrate) > 0 && (
+                      <p>Kohlenhydrate: <span className="font-semibold">{parseNutritionalValue(nutritionalValues.Kohlenhydrate).toFixed(1)} g</span></p>
+                    )}
+                    {parseNutritionalValue(nutritionalValues["davon Zucker"]) > 0 && (
+                      <p>- davon Zucker: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["davon Zucker"]).toFixed(1)} g</span></p>
+                    )}
+                    {parseNutritionalValue(nutritionalValues.Ballaststoffe) > 0 && (
+                      <p>Ballaststoffe: <span className="font-semibold">{parseNutritionalValue(nutritionalValues.Ballaststoffe).toFixed(1)} g</span></p>
+                    )}
+                    {parseNutritionalValue(nutritionalValues.Eiweiss) > 0 && (
+                      <p>Eiweiß: <span className="font-semibold">{parseNutritionalValue(nutritionalValues.Eiweiss).toFixed(1)} g</span></p>
+                    )}
+                    {parseNutritionalValue(nutritionalValues.Salz) > 0 && (
+                      <p>Salz: <span className="font-semibold">{parseNutritionalValue(nutritionalValues.Salz).toFixed(1)} g</span></p>
+                    )}
                   </div>
                   
                   {/* Essential fatty acids */}
                   <div>
                     <h4 className="font-medium mb-1">Essentielle Fettsäuren</h4>
-                    <p>Omega-6-Fettsäuren: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["mehrfachungesättigte Fettsäuren (n-6)"]).toFixed(1)} g</span></p>
-                    <p>Linolsäure (Omega-6): <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Linolsäure (Omega-6-Fettsäuren)"]).toFixed(1)} g</span></p>
-                    <p>Alpha-Linolensäure (Omega-3): <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Alpha-Linolensäure (n-3) Omega3"]).toFixed(1)} g</span></p>
-                    <p>EPA + DHA: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Summe von Eicosapentaensäure und  Docosahexaensäure (EPA + DH"]).toFixed(1)} g</span></p>
+                    {parseNutritionalValue(nutritionalValues["mehrfachungesättigte Fettsäuren (n-6)"]) > 0 && (
+                      <p>Omega-6-Fettsäuren: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["mehrfachungesättigte Fettsäuren (n-6)"]).toFixed(1)} g</span></p>
+                    )}
+                    {parseNutritionalValue(nutritionalValues["Linolsäure (Omega-6-Fettsäuren)"]) > 0 && (
+                      <p>Linolsäure (Omega-6): <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Linolsäure (Omega-6-Fettsäuren)"]).toFixed(1)} g</span></p>
+                    )}
+                    {parseNutritionalValue(nutritionalValues["Alpha-Linolensäure (n-3) Omega3"]) > 0 && (
+                      <p>Alpha-Linolensäure (Omega-3): <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Alpha-Linolensäure (n-3) Omega3"]).toFixed(1)} g</span></p>
+                    )}
+                    {parseNutritionalValue(nutritionalValues["Summe von Eicosapentaensäure und  Docosahexaensäure (EPA + DH"]) > 0 && (
+                      <p>EPA + DHA: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Summe von Eicosapentaensäure und  Docosahexaensäure (EPA + DH"]).toFixed(1)} g</span></p>
+                    )}
                   </div>
                 </div>
                 
@@ -654,22 +682,50 @@ export default function ProductsPage() {
                     <summary className="font-medium cursor-pointer">Vitamine</summary>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 p-2 bg-gray-100 rounded">
                       <div>
-                        <p>Vitamin A: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Vitamin A"]).toFixed(1)}</span></p>
-                        <p>B-Carotin: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["B-Carotin (Provitamin A)"]).toFixed(1)}</span></p>
-                        <p>Vitamin D: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Vitamin D"]).toFixed(1)}</span></p>
-                        <p>Vitamin E: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Vitamin E"]).toFixed(1)}</span></p>
-                        <p>Vitamin C: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Vitamin C"]).toFixed(1)}</span></p>
-                        <p>Vitamin K: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Vitamin K"]).toFixed(1)}</span></p>
+                        {parseNutritionalValue(nutritionalValues["Vitamin A"]) > 0 && (
+                          <p>Vitamin A: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Vitamin A"]).toFixed(1)}</span></p>
+                        )}
+                        {parseNutritionalValue(nutritionalValues["B-Carotin (Provitamin A)"]) > 0 && (
+                          <p>B-Carotin: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["B-Carotin (Provitamin A)"]).toFixed(1)}</span></p>
+                        )}
+                        {parseNutritionalValue(nutritionalValues["Vitamin D"]) > 0 && (
+                          <p>Vitamin D: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Vitamin D"]).toFixed(1)}</span></p>
+                        )}
+                        {parseNutritionalValue(nutritionalValues["Vitamin E"]) > 0 && (
+                          <p>Vitamin E: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Vitamin E"]).toFixed(1)}</span></p>
+                        )}
+                        {parseNutritionalValue(nutritionalValues["Vitamin C"]) > 0 && (
+                          <p>Vitamin C: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Vitamin C"]).toFixed(1)}</span></p>
+                        )}
+                        {parseNutritionalValue(nutritionalValues["Vitamin K"]) > 0 && (
+                          <p>Vitamin K: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Vitamin K"]).toFixed(1)}</span></p>
+                        )}
                       </div>
                       <div>
-                        <p>Vitamin B1 (Thiamin): <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Vitamin B1 (Thiamin)"]).toFixed(1)}</span></p>
-                        <p>Vitamin B2 (Riboflavin): <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Vitamin B2 (Riboflavin)"]).toFixed(1)}</span></p>
-                        <p>Vitamin B3 (Niacin): <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Vitamin B3  Niacin (Vitamin PP)"]).toFixed(1)}</span></p>
-                        <p>Vitamin B6: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Vitamin B6"]).toFixed(1)}</span></p>
-                        <p>Folsäure: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Folsäure/Folacin"]).toFixed(1)}</span></p>
-                        <p>Vitamin B12: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Vitamin B12"]).toFixed(1)}</span></p>
-                        <p>Biotin: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Biotin"]).toFixed(1)}</span></p>
-                        <p>Pantothensäure: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Pantothensäure"]).toFixed(1)}</span></p>
+                        {parseNutritionalValue(nutritionalValues["Vitamin B1 (Thiamin)"]) > 0 && (
+                          <p>Vitamin B1 (Thiamin): <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Vitamin B1 (Thiamin)"]).toFixed(1)}</span></p>
+                        )}
+                        {parseNutritionalValue(nutritionalValues["Vitamin B2 (Riboflavin)"]) > 0 && (
+                          <p>Vitamin B2 (Riboflavin): <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Vitamin B2 (Riboflavin)"]).toFixed(1)}</span></p>
+                        )}
+                        {parseNutritionalValue(nutritionalValues["Vitamin B3  Niacin (Vitamin PP)"]) > 0 && (
+                          <p>Vitamin B3 (Niacin): <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Vitamin B3  Niacin (Vitamin PP)"]).toFixed(1)}</span></p>
+                        )}
+                        {parseNutritionalValue(nutritionalValues["Vitamin B6"]) > 0 && (
+                          <p>Vitamin B6: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Vitamin B6"]).toFixed(1)}</span></p>
+                        )}
+                        {parseNutritionalValue(nutritionalValues["Folsäure/Folacin"]) > 0 && (
+                          <p>Folsäure: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Folsäure/Folacin"]).toFixed(1)}</span></p>
+                        )}
+                        {parseNutritionalValue(nutritionalValues["Vitamin B12"]) > 0 && (
+                          <p>Vitamin B12: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Vitamin B12"]).toFixed(1)}</span></p>
+                        )}
+                        {parseNutritionalValue(nutritionalValues["Biotin"]) > 0 && (
+                          <p>Biotin: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Biotin"]).toFixed(1)}</span></p>
+                        )}
+                        {parseNutritionalValue(nutritionalValues["Pantothensäure"]) > 0 && (
+                          <p>Pantothensäure: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Pantothensäure"]).toFixed(1)}</span></p>
+                        )}
                       </div>
                     </div>
                   </details>
@@ -680,21 +736,47 @@ export default function ProductsPage() {
                     <summary className="font-medium cursor-pointer">Mineralstoffe</summary>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 p-2 bg-gray-100 rounded">
                       <div>
-                        <p>Calcium: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Calcium"]).toFixed(1)}</span></p>
-                        <p>Phosphor: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Phosphor"]).toFixed(1)}</span></p>
-                        <p>Eisen: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Eisen"]).toFixed(1)}</span></p>
-                        <p>Magnesium: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Magnesium"]).toFixed(1)}</span></p>
-                        <p>Zink: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Zink"]).toFixed(1)}</span></p>
-                        <p>Jod: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Jod"]).toFixed(1)}</span></p>
+                        {parseNutritionalValue(nutritionalValues["Calcium"]) > 0 && (
+                          <p>Calcium: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Calcium"]).toFixed(1)}</span></p>
+                        )}
+                        {parseNutritionalValue(nutritionalValues["Phosphor"]) > 0 && (
+                          <p>Phosphor: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Phosphor"]).toFixed(1)}</span></p>
+                        )}
+                        {parseNutritionalValue(nutritionalValues["Eisen"]) > 0 && (
+                          <p>Eisen: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Eisen"]).toFixed(1)}</span></p>
+                        )}
+                        {parseNutritionalValue(nutritionalValues["Magnesium"]) > 0 && (
+                          <p>Magnesium: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Magnesium"]).toFixed(1)}</span></p>
+                        )}
+                        {parseNutritionalValue(nutritionalValues["Zink"]) > 0 && (
+                          <p>Zink: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Zink"]).toFixed(1)}</span></p>
+                        )}
+                        {parseNutritionalValue(nutritionalValues["Jod"]) > 0 && (
+                          <p>Jod: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Jod"]).toFixed(1)}</span></p>
+                        )}
                       </div>
                       <div>
-                        <p>Selen: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Selen"]).toFixed(1)}</span></p>
-                        <p>Kupfer: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Kupfer"]).toFixed(1)}</span></p>
-                        <p>Mangan: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Mangan"]).toFixed(1)}</span></p>
-                        <p>Chrom: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Chrom"]).toFixed(1)}</span></p>
-                        <p>Molybdän: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Molybdän"]).toFixed(1)}</span></p>
-                        <p>Kalium: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Kalium"]).toFixed(1)}</span></p>
-                        <p>Chlorid: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Chlorid"]).toFixed(1)}</span></p>
+                        {parseNutritionalValue(nutritionalValues["Selen"]) > 0 && (
+                          <p>Selen: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Selen"]).toFixed(1)}</span></p>
+                        )}
+                        {parseNutritionalValue(nutritionalValues["Kupfer"]) > 0 && (
+                          <p>Kupfer: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Kupfer"]).toFixed(1)}</span></p>
+                        )}
+                        {parseNutritionalValue(nutritionalValues["Mangan"]) > 0 && (
+                          <p>Mangan: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Mangan"]).toFixed(1)}</span></p>
+                        )}
+                        {parseNutritionalValue(nutritionalValues["Chrom"]) > 0 && (
+                          <p>Chrom: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Chrom"]).toFixed(1)}</span></p>
+                        )}
+                        {parseNutritionalValue(nutritionalValues["Molybdän"]) > 0 && (
+                          <p>Molybdän: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Molybdän"]).toFixed(1)}</span></p>
+                        )}
+                        {parseNutritionalValue(nutritionalValues["Kalium"]) > 0 && (
+                          <p>Kalium: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Kalium"]).toFixed(1)}</span></p>
+                        )}
+                        {parseNutritionalValue(nutritionalValues["Chlorid"]) > 0 && (
+                          <p>Chlorid: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Chlorid"]).toFixed(1)}</span></p>
+                        )}
                       </div>
                     </div>
                   </details>
@@ -705,12 +787,20 @@ export default function ProductsPage() {
                     <summary className="font-medium cursor-pointer">Sonstige Nährstoffe</summary>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 p-2 bg-gray-100 rounded">
                       <div>
-                        <p>Cholin: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Cholin"]).toFixed(1)}</span></p>
-                        <p>Betain: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Betain"]).toFixed(1)}</span></p>
+                        {parseNutritionalValue(nutritionalValues["Cholin"]) > 0 && (
+                          <p>Cholin: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Cholin"]).toFixed(1)}</span></p>
+                        )}
+                        {parseNutritionalValue(nutritionalValues["Betain"]) > 0 && (
+                          <p>Betain: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Betain"]).toFixed(1)}</span></p>
+                        )}
                       </div>
                       <div>
-                        <p>Lycopin: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Lycopin"]).toFixed(1)}</span></p>
-                        <p>Fluorid: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Fluorid"]).toFixed(1)}</span></p>
+                        {parseNutritionalValue(nutritionalValues["Lycopin"]) > 0 && (
+                          <p>Lycopin: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Lycopin"]).toFixed(1)}</span></p>
+                        )}
+                        {parseNutritionalValue(nutritionalValues["Fluorid"]) > 0 && (
+                          <p>Fluorid: <span className="font-semibold">{parseNutritionalValue(nutritionalValues["Fluorid"]).toFixed(1)}</span></p>
+                        )}
                       </div>
                     </div>
                   </details>
@@ -895,9 +985,11 @@ function DecomposedIngredientList({ productId, amount }: { productId: number, am
     decomposeProductIngredients(productId, amount).then(setIngredients);
   }, [productId, amount]);
   if (!ingredients.length) return null;
+  // Sort by amount descending
+  const sorted = [...ingredients].sort((a, b) => b.amount - a.amount);
   return (
     <>
-      {ingredients.map((item, idx) => (
+      {sorted.map((item, idx) => (
         <li key={idx}>{item.name} – <b>{item.amount.toFixed(1)} g</b></li>
       ))}
     </>
