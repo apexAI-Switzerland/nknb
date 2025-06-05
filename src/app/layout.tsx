@@ -27,10 +27,10 @@ function Footer() {
             <a href="https://apex-ai.ch" target="_blank" rel="noopener noreferrer" className="text-sm text-gray-500 hover:text-naturkostbar-brown">
               Website
             </a>
-            <a href="#" className="text-sm text-gray-500 hover:text-naturkostbar-brown">
+            <a href="https://apex-ai.ch/datenschutzerklaerung/" className="text-sm text-gray-500 hover:text-naturkostbar-brown">
               Datenschutz
             </a>
-            <a href="#" className="text-sm text-gray-500 hover:text-naturkostbar-brown">
+            <a href="https://apex-ai.ch/impressum/" className="text-sm text-gray-500 hover:text-naturkostbar-brown">
               Impressum
             </a>
           </div>
