@@ -26,8 +26,8 @@ import { useForm, useFieldArray } from "react-hook-form"
 import * as z from "zod"
 import { supabase, ProduktMaster, ZutatenMaster, parseNutritionalValue } from "@/lib/supabase"
 import { toast } from "@/components/ui/use-toast"
-import { useState, useEffect, useCallback } from "react"
-import { X } from "lucide-react"
+import { useState, useEffect, useCallback, useRef } from "react"
+import { X, ChevronDown } from "lucide-react"
 import { decomposeProductIngredients } from "@/lib/calculations"
 
 const productSchema = z.object({
@@ -124,6 +124,20 @@ export default function ProductsPage() {
 
   // Add local search state for each ingredient dropdown
   const [ingredientSearch, setIngredientSearch] = useState<{ [key: number]: string }>({});
+  const [dropdownOpen, setDropdownOpen] = useState<{ [key: number]: boolean }>({});
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('[data-dropdown]')) {
+        setDropdownOpen({});
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const [productSearch, setProductSearch] = useState("");
   const [showCount, setShowCount] = useState(10);
@@ -529,117 +543,159 @@ export default function ProductsPage() {
                 <h3 className="text-lg font-medium mb-2">Zutaten</h3>
                 
                 {fields.map((field, index) => (
-                  <div key={field.id} className="flex gap-2 mb-2 items-start">
-                    {/* Dropdown (Zutat/Produkt) */}
-                    <div className="flex items-center h-full w-1/4 min-w-[120px]">
-                    <FormField
-                      control={form.control}
-                      name={`ingredients.${index}.IngredientType`}
-                      render={({ field }) => (
-                          <FormItem className="w-full">
-                          <Select
-                            value={field.value}
-                            onValueChange={(value) => {
-                              field.onChange(value);
-                                handleTypeChange(index);
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Zutat">Zutat</SelectItem>
-                              <SelectItem value="Produkt">Produkt</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </FormItem>
-                      )}
-                    />
-                    </div>
-                    {/* Search + Select stacked */}
-                    <div className="flex flex-col flex-1 gap-1">
-                      <input
-                        type="text"
-                        placeholder="Suchen..."
-                        className="px-2 py-1 border rounded text-sm"
-                        value={ingredientSearch[index] || ""}
-                        onChange={e => setIngredientSearch(s => ({ ...s, [index]: e.target.value }))}
-                        style={{ minWidth: 0 }}
-                      />
-                    <FormField
-                      control={form.control}
-                      name={`ingredients.${index}.IngredientID`}
-                      render={({ field }) => (
-                          <FormItem className="w-full">
-                          <Select
-                            value={field.value}
-                            onValueChange={(value) => {
-                              field.onChange(value);
-                              handleIngredientChange(index, value);
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select ingredient" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {(form.watch(`ingredients.${index}.IngredientType`) === 'Zutat'
-                                  ? ingredients.filter(ing =>
-                                      (!ingredientSearch[index] ||
-                                        (typeof ing.Name === 'string' && ing.Name.toLowerCase().includes(ingredientSearch[index].toLowerCase()))
-                                      )
-                                    )
-                                  : products.filter(prod =>
-                                      (!ingredientSearch[index] ||
-                                        (typeof prod.Produktname === 'string' && prod.Produktname.toLowerCase().includes(ingredientSearch[index].toLowerCase()))
-                                      )
-                                    )
-                                ).map(item => (
-                                  <SelectItem key={item.ID} value={item.ID.toString()}>
-                                    {form.watch(`ingredients.${index}.IngredientType`) === 'Zutat' ? item.Name : item.Produktname}
-                                    </SelectItem>
-                                  ))}
-                            </SelectContent>
-                          </Select>
-                        </FormItem>
-                      )}
-                    />
-                    </div>
-                    {/* Amount input + g */}
-                    <div className="flex items-center gap-2 w-1/4 min-w-[120px]">
-                    <FormField
-                      control={form.control}
-                      name={`ingredients.${index}.Amount`}
-                      render={({ field }) => (
-                          <FormItem className="w-full">
-                          <FormControl>
-                              <div className="flex items-center gap-2">
-                            <Input
-                              type="number"
-                                  placeholder="Menge"
-                              {...field}
-                              onChange={(e) => {
-                                const value = parseFloat(e.target.value) || 0;
+                  <div key={field.id} className="flex gap-3 mb-4 items-center p-4 border rounded-lg bg-gray-50/50">
+                    {/* Type Selector */}
+                    <div className="w-24 flex-shrink-0">
+                      <FormField
+                        control={form.control}
+                        name={`ingredients.${index}.IngredientType`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <Select
+                              value={field.value}
+                              onValueChange={(value) => {
                                 field.onChange(value);
-                                    handleAmountChange(index);
+                                handleTypeChange(index);
                               }}
-                            />
-                                <span className="text-gray-400 text-xs">g</span>
-                              </div>
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
+                            >
+                              <SelectTrigger className="h-10">
+                                <SelectValue placeholder="Typ" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Zutat">Zutat</SelectItem>
+                                <SelectItem value="Produkt">Produkt</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormItem>
+                        )}
+                      />
                     </div>
+
+                    {/* Custom Search & Select */}
+                    <div className="flex-1 min-w-0 relative">
+                      <FormField
+                        control={form.control}
+                        name={`ingredients.${index}.IngredientID`}
+                        render={({ field }) => {
+                          const currentType = form.watch(`ingredients.${index}.IngredientType`);
+                          const currentSource = currentType === 'Zutat' ? ingredients : products;
+                          const filteredItems = currentSource.filter(item => {
+                            if (!ingredientSearch[index]) return true;
+                            const name = currentType === 'Zutat' ? item.Name : item.Produktname;
+                            return typeof name === 'string' && name.toLowerCase().includes(ingredientSearch[index].toLowerCase());
+                          });
+                          
+                          const selectedItem = currentSource.find(item => item.ID.toString() === field.value);
+                          const displayValue = selectedItem ? 
+                            (currentType === 'Zutat' ? selectedItem.Name : selectedItem.Produktname) : 
+                            '';
+
+                          return (
+                            <FormItem>
+                              <div className="relative" data-dropdown>
+                                {/* Trigger Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => setDropdownOpen(prev => ({ ...prev, [index]: !prev[index] }))}
+                                  className="w-full h-10 px-3 py-2 text-left border border-input bg-background rounded-md hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 flex items-center justify-between"
+                                >
+                                  <span className={displayValue ? "text-foreground" : "text-muted-foreground"}>
+                                    {displayValue || `${currentType} auswählen...`}
+                                  </span>
+                                  <ChevronDown className="h-4 w-4 opacity-50" />
+                                </button>
+
+                                {/* Dropdown Content */}
+                                {dropdownOpen[index] && (
+                                  <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-md max-h-60 overflow-hidden">
+                                    {/* Search Input */}
+                                    <div className="p-2 border-b bg-background sticky top-0 z-10">
+                                      <Input
+                                        placeholder={`${currentType} suchen...`}
+                                        value={ingredientSearch[index] || ""}
+                                        onChange={e => setIngredientSearch(s => ({ ...s, [index]: e.target.value }))}
+                                        className="h-8"
+                                        autoComplete="off"
+                                        spellCheck={false}
+                                        autoFocus
+                                      />
+                                    </div>
+                                    
+                                    {/* Options List */}
+                                    <div className="max-h-48 overflow-y-auto">
+                                      {filteredItems.map(item => (
+                                        <button
+                                          key={item.ID}
+                                          type="button"
+                                          onClick={() => {
+                                            field.onChange(item.ID.toString());
+                                            handleIngredientChange(index, item.ID.toString());
+                                            setDropdownOpen(prev => ({ ...prev, [index]: false }));
+                                          }}
+                                          className="w-full px-3 py-2 text-left hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none flex items-center justify-between"
+                                        >
+                                          <span>{currentType === 'Zutat' ? item.Name : item.Produktname}</span>
+                                          <span className="text-xs text-muted-foreground ml-2">
+                                            {currentType}
+                                          </span>
+                                        </button>
+                                      ))}
+                                      
+                                      {/* No results */}
+                                      {filteredItems.length === 0 && ingredientSearch[index] && (
+                                        <div className="p-2 text-sm text-muted-foreground text-center">
+                                          Keine Ergebnisse gefunden
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </FormItem>
+                          );
+                        }}
+                      />
+                    </div>
+
+                    {/* Amount input */}
+                    <div className="w-32 flex-shrink-0">
+                      <FormField
+                        control={form.control}
+                        name={`ingredients.${index}.Amount`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl>
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  type="number"
+                                  placeholder="0"
+                                  className="h-10"
+                                  {...field}
+                                  onChange={(e) => {
+                                    const value = parseFloat(e.target.value) || 0;
+                                    field.onChange(value);
+                                    handleAmountChange(index);
+                                  }}
+                                />
+                                <span className="text-sm text-gray-600 font-medium">g</span>
+                              </div>
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
                     {/* Remove button */}
-                    <div className="flex items-center h-full">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() => remove(index)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                    <div className="flex-shrink-0">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => remove(index)}
+                        className="h-10 w-10 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -648,9 +704,9 @@ export default function ProductsPage() {
                   type="button"
                   variant="outline"
                   onClick={() => append({ IngredientID: "", IngredientType: "Zutat", Amount: 0 })}
-                  className="mt-2"
+                  className="mt-4 w-full border-dashed border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-600 hover:text-gray-700"
                 >
-                  Zutat hinzufügen
+                  + Zutat hinzufügen
                 </Button>
               </div>
 
