@@ -27,7 +27,7 @@ import * as z from "zod"
 import { supabase, ProduktMaster, ZutatenMaster, parseNutritionalValue } from "@/lib/supabase"
 import { makeCsvBlobWithBom, parseCsvToObjects } from "@/lib/csv"
 import { toast } from "@/components/ui/use-toast"
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useRef, Fragment } from "react"
 import { X, ChevronDown } from "lucide-react"
 import { decomposeProductIngredients } from "@/lib/calculations"
 
@@ -61,6 +61,7 @@ function arrayToCSV(data: any[], columns: string[], headers: string[]): string {
 export default function ProductsPage() {
   const [products, setProducts] = useState<ProduktMaster[]>([])
   const [ingredients, setIngredients] = useState<ZutatenMaster[]>([])
+  const [editingProductId, setEditingProductId] = useState<number | null>(null)
   const [nutritionalValues, setNutritionalValues] = useState({
     kJ: "0",
     kcal: "0",
@@ -118,7 +119,7 @@ export default function ProductsPage() {
     },
   })
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
     name: "ingredients",
   })
@@ -169,6 +170,11 @@ export default function ProductsPage() {
       .order('Produktname', { ascending: true });
     setProducts(data || []);
   };
+
+  // Normalize type to DB representation for consistent keying
+  const normalizeType = (t: 'Zutat' | 'Produkt' | 'ingredient' | 'product'): 'ingredient' | 'product' =>
+    t === 'Zutat' ? 'ingredient' : t === 'Produkt' ? 'product' : t;
+  const makeKey = (type: 'Zutat' | 'Produkt' | 'ingredient' | 'product', id: string | number) => `${normalizeType(type)}:${Number(id)}`;
 
   // Add useEffect to fetch data on component mount
   useEffect(() => {
@@ -309,80 +315,204 @@ export default function ProductsPage() {
         ])
       );
       
-      // First, create the product
-      const { data: newProduct, error } = await supabase()
-        .from('ProduktMaster')
-        .insert({
-          Produktname: data.Produktname,
-          // Include all nutritional values
-          ...sanitizedValues
-        })
-        .select()
-        .single()
-
-      if (error) {
-        console.error('Error creating product:', error);
-        throw error;
+      // If editing, update existing product; otherwise create new
+      let productId: number | null = editingProductId;
+      if (editingProductId) {
+        const { error: updateError } = await supabase()
+          .from('ProduktMaster')
+          .update({
+            Produktname: data.Produktname,
+            ...sanitizedValues
+          })
+          .eq('ID', editingProductId);
+        if (updateError) {
+          console.error('Error updating product:', updateError);
+          throw updateError;
+        }
+      } else {
+        const { data: newProduct, error: insertError } = await supabase()
+          .from('ProduktMaster')
+          .insert({
+            Produktname: data.Produktname,
+            ...sanitizedValues
+          })
+          .select()
+          .single();
+        if (insertError) {
+          console.error('Error creating product:', insertError);
+          throw insertError;
+        }
+        productId = newProduct?.ID ?? null;
       }
 
-      console.log("Product created successfully:", newProduct);
+      // Then, synchronize ingredient relationships: delete removed, update changed, insert new
+      if (productId || editingProductId) {
+        const effectiveId = productId || editingProductId!;
+        // Build desired state from form
+        const validIngredients = (data.ingredients || []).filter(ing => ing.IngredientID !== "");
+        const dedupedMap = new Map<string, { IngredientID: string; IngredientType: 'Zutat' | 'Produkt'; Amount: number }>();
+        for (const ing of validIngredients) {
+          const key = makeKey(ing.IngredientType, ing.IngredientID);
+          dedupedMap.set(key, ing);
+        }
+        const desired = Array.from(dedupedMap.values());
 
-      // Then, insert ingredient relationships
-      if (data.ingredients.length > 0 && newProduct) {
-        console.log("New product ID:", newProduct.ID);
-        // Filter out ingredients with empty IDs
-        const validIngredients = data.ingredients.filter(ing => ing.IngredientID !== "");
-        console.log("Valid ingredients for insertion:", validIngredients);
-        if (validIngredients.length > 0) {
-          try {
-            // Prepare the data to be inserted
-            const ingredientsToInsert = validIngredients.map(ing => {
-              const type = ing.IngredientType === 'Zutat' ? 'ingredient' : 'product';
-              const data = {
-                ProductID: newProduct.ID,
-                IngredientID: ing.IngredientID,
-                IngredientType: type,
-                Amount: parseFloat(ing.Amount.toString()) || 0,
-              };
-              console.log("Prepared ingredient data:", data);
-              return data;
-            });
-            console.log("Complete ingredient data to be inserted:", ingredientsToInsert);
-            const { data: insertedData, error: ingredientsError } = await supabase()
-              .from('ProductIngredients')
-              .insert(ingredientsToInsert)
-              .select();
-            if (ingredientsError) {
-              console.error("Error inserting ingredients:", ingredientsError);
-              toast({
-                title: "Error adding ingredients",
-                description: JSON.stringify(ingredientsError),
-                variant: "destructive",
+        try {
+          // Fetch current state
+          const { data: existing, error: fetchRelErr } = await supabase()
+            .from('ProductIngredients')
+            .select('*')
+            .eq('ProductID', effectiveId);
+          if (fetchRelErr) throw fetchRelErr;
+          const existingArr = existing || [];
+          // Group existing rows by normalized key so we can detect duplicates
+          const existingGroups = new Map<string, any[]>();
+          for (const r of existingArr) {
+            const key = makeKey(r.IngredientType as any, r.IngredientID);
+            const group = existingGroups.get(key) || [];
+            group.push(r);
+            existingGroups.set(key, group);
+          }
+
+          // Compute diffs
+          const toDeleteIds: number[] = [];
+          const toInsert = [] as Array<{ ProductID: number; IngredientID: number; IngredientType: 'ingredient' | 'product'; Amount: number }>;
+          const toUpdateById = [] as Array<{ ID: number; Amount: number }>;
+
+          // Mark deletions for groups that are no longer desired
+          for (const [key, group] of existingGroups.entries()) {
+            if (!dedupedMap.has(key)) {
+              toDeleteIds.push(...group.map(g => g.ID));
+            }
+          }
+
+          for (const d of desired) {
+            const key = makeKey(d.IngredientType, d.IngredientID);
+            const group = existingGroups.get(key) || [];
+            const normalizedAmount = parseFloat(d.Amount.toString()) || 0;
+            if (group.length === 0) {
+              // New relation
+              toInsert.push({
+                ProductID: effectiveId,
+                IngredientID: Number(d.IngredientID),
+                IngredientType: normalizeType(d.IngredientType),
+                Amount: normalizedAmount,
               });
             } else {
-              console.log("Successfully inserted ingredients:", insertedData);
+              // Keep the first, delete the rest, and update the kept one's amount if changed
+              const [keep, ...dupes] = group;
+              if (dupes.length > 0) toDeleteIds.push(...dupes.map(d => d.ID));
+              const existingAmt = Number(keep.Amount) || 0;
+              if (Math.abs(existingAmt - normalizedAmount) > 1e-6) {
+                toUpdateById.push({ ID: keep.ID, Amount: normalizedAmount });
+              }
             }
-          } catch (err) {
-            console.error("Exception when inserting ingredients:", err);
-            toast({
-              title: "Error adding ingredients",
-              description: "An unexpected error occurred: " + (err instanceof Error ? err.message : String(err)),
-              variant: "destructive",
-            });
           }
+
+          // Execute deletes
+          if (toDeleteIds.length > 0) {
+            const { error: delErr } = await supabase().from('ProductIngredients').delete().in('ID', toDeleteIds);
+            if (delErr) {
+              console.error('Delete error (toDeleteIds):', delErr, toDeleteIds);
+              throw delErr;
+            }
+          }
+
+          // Execute updates (by specific IDs)
+          if (toUpdateById.length > 0) {
+            const results = await Promise.all(toUpdateById.map(u =>
+              supabase().from('ProductIngredients').update({ Amount: u.Amount }).eq('ID', u.ID)
+            ));
+            const updateErr = results.find(r => (r as any)?.error)?.error;
+            if (updateErr) {
+              console.error('Update error (toUpdateById):', updateErr, toUpdateById);
+              throw updateErr;
+            }
+          }
+
+          // Execute inserts
+          if (toInsert.length > 0) {
+            const { error: insErr } = await supabase().from('ProductIngredients').insert(toInsert);
+            if (insErr) throw insErr;
+          }
+
+          // Final cleanup: ensure no duplicates remain (defensive)
+          const { data: afterSave, error: afterSaveErr } = await supabase()
+            .from('ProductIngredients')
+            .select('*')
+            .eq('ProductID', effectiveId);
+          if (afterSaveErr) {
+            console.error('Post-save fetch error:', afterSaveErr);
+            throw afterSaveErr;
+          }
+          const groups: Record<string, any[]> = {};
+          (afterSave || []).forEach(r => {
+            const k = makeKey(r.IngredientType as any, r.IngredientID);
+            groups[k] ||= [];
+            groups[k].push(r);
+          });
+          const dupesToDelete: number[] = [];
+          Object.values(groups).forEach(arr => {
+            if (arr.length > 1) {
+              // keep the row with the latest CreatedAt or highest ID
+              const sorted = [...arr].sort((a, b) => (new Date(b.CreatedAt || 0).getTime() - new Date(a.CreatedAt || 0).getTime()) || (b.ID - a.ID));
+              const [, ...rest] = sorted;
+              dupesToDelete.push(...rest.map(r => r.ID));
+            }
+          });
+          if (dupesToDelete.length) {
+            const { error: dupDelErr } = await supabase().from('ProductIngredients').delete().in('ID', dupesToDelete);
+            if (dupDelErr) {
+              console.error('Delete error (dupesToDelete):', dupDelErr, dupesToDelete);
+              throw dupDelErr;
+            }
+          }
+
+          // Final prune: any rows whose key is not in desired should be removed (defensive once more)
+          const desiredKeySet = new Set(Array.from(dedupedMap.keys()));
+          const strayIds: number[] = [];
+          (afterSave || []).forEach(r => {
+            const key = makeKey(r.IngredientType as any, r.IngredientID);
+            if (!desiredKeySet.has(key)) strayIds.push(r.ID);
+          });
+          if (strayIds.length) {
+            const { error: strayDelErr } = await supabase().from('ProductIngredients').delete().in('ID', strayIds);
+            if (strayDelErr) {
+              console.error('Delete error (strayIds):', strayDelErr, strayIds);
+              throw strayDelErr;
+            }
+          }
+        } catch (err) {
+          console.error('Error synchronizing ingredients:', err);
+          toast({ title: 'Fehler', description: 'Zutaten konnten nicht gespeichert werden', variant: 'destructive' });
+          throw err;
         }
       }
 
+      const effectiveRefreshId = (productId || editingProductId) ?? null;
+
       toast({
-        title: "Success",
-        description: "Produkt erfolgreich erstell",
+        title: 'Success',
+        description: editingProductId ? 'Produkt erfolgreich aktualisiert' : 'Produkt erfolgreich erstellt',
       })
 
       // Fetch products immediately to update the UI
       await fetchProducts()
+      // Always clear cached ingredients for this product so next expand shows fresh data
+      if (effectiveRefreshId) {
+        setProductIngredients(prev => {
+          const { [effectiveRefreshId]: _removed, ...rest } = prev as any;
+          return rest as any;
+        });
+        // If details are open, force-refetch immediately
+        if (expanded[effectiveRefreshId]) {
+          await fetchProductIngredients(effectiveRefreshId, true)
+        }
+      }
       
-      // Reset the form
+      // Reset the form and editing state
       form.reset()
+      setEditingProductId(null)
       setNutritionalValues({
         kJ: "0",
         kcal: "0",
@@ -452,8 +582,8 @@ export default function ProductsPage() {
   const visibleProducts = filteredProducts.slice(0, showCount);
 
   // Fetch ingredients for a product when expanded
-  async function fetchProductIngredients(productId: number) {
-    if (productIngredients[productId]) return; // Already fetched
+  async function fetchProductIngredients(productId: number, force: boolean = false) {
+    if (!force && productIngredients[productId]) return; // Already fetched
     setLoadingIngredients(l => ({ ...l, [productId]: true }));
     const { data: ingredientData, error: ingredientError } = await supabase()
       .from('ProductIngredients')
@@ -574,7 +704,7 @@ export default function ProductsPage() {
 
   return (
     <main className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">Produkt erfassen</h1>
+      <h1 className="text-2xl font-bold mb-6">{editingProductId ? 'Produkt bearbeiten' : 'Produkt erfassen'}</h1>
       
       <Card>
         <CardContent className="pt-6">
@@ -952,9 +1082,71 @@ export default function ProductsPage() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full">
-                Produkt speichern
-              </Button>
+              <div className="flex gap-3">
+                <Button type="submit" className="flex-1">
+                  {editingProductId ? 'Produkt aktualisieren' : 'Produkt speichern'}
+                </Button>
+                {editingProductId && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setEditingProductId(null);
+                      form.reset({ Produktname: '', ingredients: [] });
+                      setNutritionalValues({
+                        kJ: "0",
+                        kcal: "0",
+                        Fett: "0",
+                        "davon gesättigte Fettsäuren": "0",
+                        "davon einfach ungesättigte Fettsäuren": "0",
+                        "davon mehrfach ungesättigte Fettsäuren": "0",
+                        Kohlenhydrate: "0",
+                        "davon Zucker": "0",
+                        Eiweiss: "0",
+                        Ballaststoffe: "0",
+                        Salz: "0",
+                        "Vitamin A": "0",
+                        "B-Carotin (Provitamin A)": "0",
+                        "Vitamin D": "0",
+                        "Vitamin E": "0",
+                        "Vitamin C": "0",
+                        "Vitamin K": "0",
+                        "Vitamin B1 (Thiamin)": "0",
+                        "Vitamin B2 (Riboflavin)": "0",
+                        "Vitamin B3  Niacin (Vitamin PP)": "0",
+                        "Vitamin B6": "0",
+                        "Folsäure/Folacin": "0",
+                        "Vitamin B12": "0",
+                        Biotin: "0",
+                        Pantothensäure: "0",
+                        Calcium: "0",
+                        Phosphor: "0",
+                        Eisen: "0",
+                        Magnesium: "0",
+                        Zink: "0",
+                        Jod: "0",
+                        Selen: "0",
+                        Kupfer: "0",
+                        Mangan: "0",
+                        Chrom: "0",
+                        Molybdän: "0",
+                        Fluorid: "0",
+                        Kalium: "0",
+                        Chlorid: "0",
+                        Cholin: "0",
+                        Betain: "0",
+                        Lycopin: "0",
+                        "mehrfachungesättigte Fettsäuren (n-6)": "0",
+                        "Alpha-Linolensäure (n-3) Omega3": "0",
+                        "Summe von Eicosapentaensäure und  Docosahexaensäure (EPA + DH": "0",
+                        "Linolsäure (Omega-6-Fettsäuren)": "0"
+                      });
+                    }}
+                  >
+                    Abbrechen
+                  </Button>
+                )}
+              </div>
             </form>
           </Form>
         </CardContent>
@@ -1004,26 +1196,57 @@ export default function ProductsPage() {
           </thead>
           <tbody>
             {visibleProducts.map(product => (
-              <>
-                <tr key={product.ID} className="border-b hover:bg-gray-50">
+              <Fragment key={product.ID}>
+                <tr className="border-b hover:bg-gray-50">
                   <td className="px-4 py-2 font-medium">{product.Produktname}</td>
                   <td className="px-4 py-2">{parseNutritionalValue(product.kcal).toFixed(1)}</td>
                   <td className="px-4 py-2">{parseNutritionalValue(product.Fett).toFixed(1)}</td>
                   <td className="px-4 py-2">{parseNutritionalValue(product.Kohlenhydrate).toFixed(1)}</td>
                   <td className="px-4 py-2">{parseNutritionalValue(product.Eiweiss).toFixed(1)}</td>
                   <td className="px-4 py-2">
-                    <button
-                      className="text-sm text-blue-600 hover:underline"
-                      onClick={() => {
-                        setExpanded(exp => {
-                          const newExp = { ...exp, [product.ID]: !exp[product.ID] };
-                          if (!exp[product.ID]) fetchProductIngredients(product.ID);
-                          return newExp;
-                        });
-                      }}
-                    >
-                      {expanded[product.ID] ? "Weniger Details" : "weitere Nährwertdetails"}
-                    </button>
+                    <div className="flex gap-3">
+                      <button
+                        className="text-sm text-blue-600 hover:underline"
+                        onClick={() => {
+                          setExpanded(exp => {
+                            const newExp = { ...exp, [product.ID]: !exp[product.ID] };
+                            if (!exp[product.ID]) fetchProductIngredients(product.ID);
+                            return newExp;
+                          });
+                        }}
+                      >
+                        {expanded[product.ID] ? "Weniger Details" : "weitere Nährwertdetails"}
+                      </button>
+                      <button
+                        className="text-sm text-green-700 hover:underline"
+                        onClick={async () => {
+                          // Load this product into the form for editing
+                          setEditingProductId(product.ID);
+                          form.reset({ Produktname: product.Produktname || '', ingredients: [] });
+                          // Load existing relations
+                          const { data: rels } = await supabase()
+                            .from('ProductIngredients')
+                            .select('*')
+                            .eq('ProductID', product.ID);
+                          if (rels && Array.isArray(rels)) {
+                            // Clear existing dynamic fields and append loaded ones
+                            // react-hook-form field array replace
+                            const mapped = rels.map((r: any) => ({
+                              IngredientID: String(r.IngredientID),
+                              IngredientType: r.IngredientType === 'ingredient' ? 'Zutat' as const : 'Produkt' as const,
+                              Amount: Number(r.Amount) || 0,
+                            }));
+                            // Replace fields using field array API to avoid duplicates
+                            replace(mapped as any);
+                            // Recalculate nutrients based on loaded relations
+                            calculateNutrients(mapped as any);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }
+                        }}
+                      >
+                        Bearbeiten
+                      </button>
+                    </div>
                   </td>
                 </tr>
                 {expanded[product.ID] && (
@@ -1161,7 +1384,7 @@ export default function ProductsPage() {
                     </td>
                   </tr>
                 )}
-              </>
+              </Fragment>
             ))}
             {visibleProducts.length === 0 && (
               <tr>
