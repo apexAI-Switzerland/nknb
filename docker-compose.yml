@@ -1,0 +1,14 @@
+version: "3.9"
+services:
+  web:
+    build: .
+    image: nknb:latest
+    ports:
+      - "3000:3000"
+    environment:
+      # Configure these in Dokploy as environment variables
+      - NODE_ENV=production
+      # Example Supabase envs (set real values in Dokploy UI)
+      - NEXT_PUBLIC_SUPABASE_URL
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY
+    restart: unless-stopped
