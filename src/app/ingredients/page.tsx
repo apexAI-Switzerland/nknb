@@ -32,6 +32,8 @@ import {
   DialogFooter
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+// @ts-ignore - local types may not resolve under bundler moduleResolution
+import * as Papa from "papaparse";
 
 interface Ingredient extends NutritionalValues {
   ID: string
@@ -171,6 +173,8 @@ export default function IngredientsPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [fileInputKey, setFileInputKey] = useState<number>(Date.now())
 
   const form = useForm<IngredientFormValues>({
     resolver: zodResolver(ingredientSchema),
@@ -286,6 +290,140 @@ export default function IngredientsPage() {
     ));
   };
 
+  // CSV helpers
+  const downloadTemplate = () => {
+    const allFields = Object.keys(ingredientSchema.shape).filter((f) => f !== 'ID');
+    // Ensure Name is first
+    const columns = ['Name', ...allFields.filter(f => f !== 'Name')];
+    const header = columns.join(',');
+    // Add UTF-8 BOM for Excel and Windows compatibility
+    const bom = '\uFEFF';
+    const blob = new Blob([bom + header + '\r\n'], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'zutaten_template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleUploadCSV = async (file: File) => {
+    try {
+      setUploading(true);
+      const text = await file.text();
+      // Strip BOM if present for safety
+      let cleanText = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+
+      // Normalize delimiter if header and data lines use different separators (comma vs semicolon)
+      const countOutsideQuotes = (line: string, ch: string) => {
+        let cnt = 0; let inQ = false;
+        for (let i = 0; i < line.length; i++) {
+          const c = line[i];
+          if (c === '"') {
+            if (i + 1 < line.length && line[i + 1] === '"') { i++; }
+            else { inQ = !inQ; }
+          } else if (!inQ && c === ch) { cnt++; }
+        }
+        return cnt;
+      };
+      const replaceOutsideQuotes = (line: string, from: string, to: string) => {
+        let out = ''; let inQ = false;
+        for (let i = 0; i < line.length; i++) {
+          const c = line[i];
+          if (c === '"') {
+            if (i + 1 < line.length && line[i + 1] === '"') { out += '""'; i++; }
+            else { inQ = !inQ; out += '"'; }
+          } else if (!inQ && c === from) { out += to; }
+          else { out += c; }
+        }
+        return out;
+      };
+      const lines = cleanText.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+      if (lines.length > 1) {
+        const header = lines[0];
+        const dataLine = lines.find((l, idx) => idx > 0 && l.trim().length > 0) || '';
+        const headerCommas = countOutsideQuotes(header, ',');
+        const headerSemicolons = countOutsideQuotes(header, ';');
+        const dataCommas = countOutsideQuotes(dataLine, ',');
+        const dataSemicolons = countOutsideQuotes(dataLine, ';');
+        // If header uses commas and data uses semicolons, convert data to commas
+        if (headerCommas > headerSemicolons && dataSemicolons > dataCommas) {
+          const normalized = lines.map((l, idx) => idx === 0 ? l : replaceOutsideQuotes(l, ';', ','));
+          cleanText = normalized.join('\n');
+        }
+        // If a data row is fully quoted (whole line wrapped in quotes), unwrap outer quotes and unescape doubled quotes
+        const unwrapLineIfFullyQuoted = (l: string) => {
+          const t = l.trim();
+          if (t.length > 1 && t.startsWith('"') && t.endsWith('"')) {
+            const inner = t.slice(1, -1).replace(/""/g, '"');
+            return inner;
+          }
+          return l;
+        };
+        const unwrapped = lines.map((l, idx) => idx === 0 ? l : unwrapLineIfFullyQuoted(l));
+        cleanText = unwrapped.join('\n');
+      }
+
+      const parsed = Papa.parse(cleanText, { header: true, skipEmptyLines: true, delimiter: ',' });
+      if (parsed.errors.length > 0) {
+        throw new Error(parsed.errors[0].message);
+      }
+      const rows = parsed.data as Record<string, string>[];
+      if (!Array.isArray(rows) || rows.length === 0) {
+        throw new Error('Keine gültigen Zeilen gefunden.');
+      }
+      // Only keep keys defined in schema
+      const expected = Object.keys(ingredientSchema.shape);
+      const objects = rows.map(row => {
+        const obj: Record<string, string | null> = {};
+        for (const key of expected) {
+          if (!(key in row)) continue;
+          const trimmed = row[key]?.trim?.() ?? '';
+          obj[key] = trimmed === '' ? null : trimmed;
+        }
+        return obj;
+      }).filter(o => !!o && typeof o['Name'] === 'string' && o['Name']?.trim().length > 0);
+      if (objects.length === 0) throw new Error('Keine gültigen Zeilen gefunden.');
+
+      // Load existing names for upsert
+      const { data: existing, error: fetchErr } = await supabase().from('ZutatenMaster').select('ID, Name');
+      if (fetchErr) throw fetchErr;
+      const nameToId = new Map<string, string>((existing || []).map((e: any) => [String(e.Name), String(e.ID)]));
+
+      const toInsert: any[] = [];
+      const toUpdate: Array<{ id: string; data: any }> = [];
+      for (const row of objects) {
+        const id = nameToId.get(String(row.Name));
+        if (id) toUpdate.push({ id, data: row });
+        else toInsert.push(row);
+      }
+
+      let inserted = 0;
+      let updated = 0;
+      if (toInsert.length > 0) {
+        const { error: insertErr, count } = await supabase()
+          .from('ZutatenMaster')
+          .insert(toInsert, { count: 'exact' });
+        if (insertErr) throw insertErr;
+        inserted = count ?? toInsert.length;
+      }
+      for (const item of toUpdate) {
+        const { error: updErr } = await supabase().from('ZutatenMaster').update(item.data).eq('ID', item.id);
+        if (updErr) throw updErr;
+        updated++;
+      }
+      toast({ title: 'Import abgeschlossen', description: `${inserted} hinzugefügt, ${updated} aktualisiert.` });
+      setFileInputKey(Date.now()); // reset file input
+      fetchIngredients();
+    } catch (e: any) {
+      toast({ title: 'Fehler beim Import', description: e?.message || 'Unbekannter Fehler', variant: 'destructive' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   // Helper to start editing
   const startEdit = () => {
     if (!selectedIngredient) return;
@@ -391,14 +529,35 @@ export default function IngredientsPage() {
       <h1 className="text-2xl font-bold mb-6 naturkostbar-accent">Zutaten</h1>
       
       <div className="mb-8">
-        <div className="flex justify-between items-center mb-2">
+        <div className="flex justify-between items-center mb-2 gap-2 flex-wrap">
           <Input
             className="max-w-xl mb-4"
             placeholder="Zutat suchen..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <Button variant="outline" onClick={handleExportCSV}>Export als CSV</Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={downloadTemplate}>Template herunterladen</Button>
+            <Button variant="outline" onClick={handleExportCSV}>Export als CSV</Button>
+            <label className="inline-flex items-center">
+              <input
+                key={fileInputKey}
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleUploadCSV(file);
+                }}
+              />
+              <Button type="button" disabled={uploading} onClick={() => {
+                // trigger click on the hidden file input
+                const inputs = document.querySelectorAll('input[type="file"]');
+                const last = inputs[inputs.length - 1] as HTMLInputElement | undefined;
+                last?.click();
+              }}>{uploading ? 'Importiere…' : 'CSV hochladen'}</Button>
+            </label>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full border rounded bg-white">

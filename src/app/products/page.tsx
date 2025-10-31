@@ -25,6 +25,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm, useFieldArray } from "react-hook-form"
 import * as z from "zod"
 import { supabase, ProduktMaster, ZutatenMaster, parseNutritionalValue } from "@/lib/supabase"
+import { makeCsvBlobWithBom, parseCsvToObjects } from "@/lib/csv"
 import { toast } from "@/components/ui/use-toast"
 import { useState, useEffect, useCallback, useRef } from "react"
 import { X, ChevronDown } from "lucide-react"
@@ -148,6 +149,9 @@ export default function ProductsPage() {
 
   // Add state for decomposed ingredients
   const [decomposedIngredients, setDecomposedIngredients] = useState<{ [key: number]: Array<{ name: string; amount: number }> }>({});
+
+  // File input ref for product CSV upload
+  const productUploadInputRef = useRef<HTMLInputElement | null>(null);
 
   // Add fetch functions
   const fetchIngredients = async () => {
@@ -514,6 +518,57 @@ export default function ProductsPage() {
       URL.revokeObjectURL(url);
     } catch (err) {
       toast({ title: 'Fehler', description: 'Export fehlgeschlagen', variant: 'destructive' });
+    }
+  };
+
+  // Product template download (only Produktname)
+  const downloadProductTemplate = () => {
+    const header = 'Produktname';
+    const blob = makeCsvBlobWithBom([header]);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'produkte_template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // Upload products CSV (names only)
+  const handleUploadProductsCSV = async (file: File) => {
+    try {
+      const text = await file.text();
+      const { rows, errors } = parseCsvToObjects(text);
+      if (errors.length) throw new Error(errors[0]);
+      if (!rows.length) throw new Error('Keine gültigen Zeilen gefunden.');
+
+      // Extract Produktname, trim, dedupe
+      const names = rows
+        .map(r => (r['Produktname'] ?? '').toString().trim())
+        .filter(n => n.length > 0);
+      const uniqueNames = Array.from(new Set(names.map(n => n.toLowerCase())));
+      if (!uniqueNames.length) throw new Error('Keine Produktnamen gefunden.');
+
+      // Fetch existing product names
+      const { data: existing, error: fetchErr } = await supabase().from('ProduktMaster').select('ID, Produktname');
+      if (fetchErr) throw fetchErr;
+      const existingLower = new Set((existing || []).map(e => (e.Produktname || '').toLowerCase()));
+
+      const toInsert = uniqueNames
+        .filter(n => !existingLower.has(n))
+        .map(n => ({ Produktname: rows.find(r => (r['Produktname'] || '').toString().trim().toLowerCase() === n)!['Produktname'].toString().trim() }));
+
+      let created = 0; let skipped = uniqueNames.length - toInsert.length;
+      if (toInsert.length) {
+        const { error: insertErr, count } = await supabase().from('ProduktMaster').insert(toInsert, { count: 'exact' });
+        if (insertErr) throw insertErr;
+        created = count ?? toInsert.length;
+      }
+      toast({ title: 'Import abgeschlossen', description: `${created} erstellt, ${skipped} übersprungen.` });
+      fetchProducts();
+    } catch (e: any) {
+      toast({ title: 'Fehler beim Import', description: e?.message || 'Unbekannter Fehler', variant: 'destructive' });
     }
   };
 
@@ -917,7 +972,23 @@ export default function ProductsPage() {
             setShowCount(10); // Reset pagination on search
           }}
         />
-        <Button variant="outline" onClick={handleExportCSV}>Export als CSV</Button>
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={downloadProductTemplate}>Template herunterladen</Button>
+          <Button variant="outline" onClick={handleExportCSV}>Export als CSV</Button>
+          <input
+            ref={productUploadInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleUploadProductsCSV(file);
+              // reset to allow same-file reselect
+              if (productUploadInputRef.current) productUploadInputRef.current.value = '';
+            }}
+          />
+          <Button type="button" onClick={() => productUploadInputRef.current?.click()}>CSV hochladen</Button>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="min-w-full border rounded bg-white">

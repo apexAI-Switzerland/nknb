@@ -23,7 +23,7 @@ export function Navigation() {
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-2">
-              <Image src="/main_logo.svg" alt="Naturkostbar Logo" width={120} height={32} style={{ height: 'auto' }} priority />
+              <Image src="/main_logo.svg" alt="Naturkostbar Logo" width={120} height={32} style={{ width: 'auto', height: 'auto' }} priority />
               <span className="sr-only">Naturkostbar</span>
             </Link>
           </div>

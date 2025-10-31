@@ -58,9 +58,8 @@ export default function RootLayout({
             __html: `window.ENV = ${JSON.stringify(env)}`,
           }}
         />
-        <link rel="stylesheet" href="/styles.css" />
       </head>
-      <body className={`${inter.className} min-h-screen flex flex-col`}>
+      <body suppressHydrationWarning className={`${inter.className} min-h-screen flex flex-col`}>
         <AuthProvider>
           <Navigation />
           <div className="flex-grow">
