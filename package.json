@@ -30,7 +30,8 @@
     "react-hook-form": "7.50.1",
     "tailwind-merge": "2.2.1",
     "tw-animate-css": "^1.2.8",
-    "zod": "3.22.4"
+    "zod": "3.22.4",
+    "papaparse": "^5.4.1"
   },
   "devDependencies": {
     "@types/node": "20.11.19",
