@@ -62,8 +62,9 @@ export function unwrapFullyQuotedLines(text: string): string {
 
 export function parseCsvToObjects(text: string): { rows: Record<string, string>[]; errors: string[] } {
   const cleaned = unwrapFullyQuotedLines(normalizeDelimiters(stripBom(text)));
-  const parsed = Papa.parse(cleaned, { header: true, skipEmptyLines: true, delimiter: ',' });
-  const errors = (parsed.errors || []).map(e => e.message);
+  const parsed = Papa.parse(cleaned, { header: true, skipEmptyLines: true, delimiter: ',' }) as any;
+  const rawErrors = (parsed && parsed.errors) ? (parsed.errors as Array<{ message?: string }>) : [];
+  const errors = rawErrors.map((e: { message?: string }) => e?.message ?? 'Unknown CSV parse error');
   const data = (parsed.data as any[]) || [];
   return { rows: data as Record<string, string>[], errors };
 }
