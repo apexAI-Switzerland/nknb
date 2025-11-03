@@ -23,6 +23,7 @@ type ResultItem = {
   bag_size?: string | null
   current_stock: number
   final_daily_usage: number
+  final_monthly_usage?: number
   days_until_stockout: number
   desired_stock: number
   amount_to_produce: number
@@ -49,6 +50,14 @@ export default function ProductionPage() {
   const [hideFallback, setHideFallback] = useState<boolean>(false)
   const [onlyProduce, setOnlyProduce] = useState<boolean>(false)
   const resultsRef = useRef<HTMLDivElement | null>(null)
+  const [adminData, setAdminData] = useState<{
+    salesYear?: number,
+    salesCount?: number,
+    minCount?: number,
+    bagCount?: number,
+    minSample?: { artikelnummer: string, global_min_stock: number }[],
+    bagSample?: { artikelnummer: string, bag_size: string }[],
+  }>({})
 
   const arrayToCSV = (data: any[], columns: string[], headers: string[]): string => {
     const esc = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`
@@ -62,8 +71,8 @@ export default function ProductionPage() {
     let display = results as ResultItem[]
     if (hideFallback) display = display.filter(r => !r.used_fallback)
     if (onlyProduce) display = display.filter(r => !!r.to_produce)
-    const cols = ['priority','artikelnummer','name','bag_size','current_stock','final_daily_usage','days_until_stockout','to_produce']
-    const headers = ['Priorität','Artikelnummer','Name','Beutelgröße','Bestand','Tagesverbrauch','Reichweite (Tage)','Zu Produzieren']
+    const cols = ['priority','artikelnummer','name','bag_size','current_stock','final_monthly_usage','days_until_stockout','to_produce']
+    const headers = ['Priorität','Artikelnummer','Name','Beutelgröße','Bestand','Monatsverbrauch','Reichweite (Tage)','Zu Produzieren']
     const csv = arrayToCSV(display as any[], cols, headers)
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
@@ -147,6 +156,19 @@ export default function ProductionPage() {
 
   useEffect(() => {
     loadRuns()
+    ;(async () => {
+      const lastYear = new Date().getFullYear() - 1
+      // Load counts and small previews of admin-uploaded data
+      const [salesRes, minRes, bagRes] = await Promise.all([
+        supabase().from('sales_history').select('artikelnummer', { count: 'exact' }).eq('year', lastYear).limit(1),
+        supabase().from('min_stock').select('*').order('artikelnummer', { ascending: true }).limit(10),
+        supabase().from('product_bag_size').select('*').order('artikelnummer', { ascending: true }).limit(10),
+      ])
+      const salesCount = (salesRes.count as number | null) ?? (salesRes.data?.length || 0)
+      const minSample = (minRes.data || []).map((r: any) => ({ artikelnummer: String(r.artikelnummer), global_min_stock: Number(r.global_min_stock) || 0 }))
+      const bagSample = (bagRes.data || []).map((r: any) => ({ artikelnummer: String(r.artikelnummer), bag_size: String(r.bag_size || '') }))
+      setAdminData({ salesYear: lastYear, salesCount, minCount: minSample.length, bagCount: bagSample.length, minSample, bagSample })
+    })()
   }, [])
 
   const handleCompute = async () => {
@@ -297,6 +319,8 @@ export default function ProductionPage() {
         </Card>
       </div>
 
+      
+
       <div className="mt-8">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
           <TabsList>
@@ -327,7 +351,7 @@ export default function ProductionPage() {
                       <th className="px-3 py-2 text-left">Name</th>
                       <th className="px-3 py-2 text-left">Beutelgröße</th>
                       <th className="px-3 py-2 text-right">Bestand</th>
-                      <th className="px-3 py-2 text-right">Tagesverbrauch</th>
+                      <th className="px-3 py-2 text-right">Monatsverbrauch</th>
                       <th className="px-3 py-2 text-right">Reichweite (Tage)</th>
                       <th className="px-3 py-2 text-left">Zu produzieren</th>
                     </tr>
@@ -345,7 +369,7 @@ export default function ProductionPage() {
                         <td className="px-3 py-2">{r.bag_size || ''}</td>
                         <td className="px-3 py-2 text-right">{r.current_stock.toFixed(0)}</td>
                         <td className="px-3 py-2 text-right">
-                          {r.final_daily_usage.toFixed(2)}
+                          {(r.final_monthly_usage ?? (r.final_daily_usage * 30)).toFixed(2)}
                           {r.used_fallback ? (
                             <span className="ml-2 inline-block px-2 py-0.5 text-xs rounded bg-yellow-100 text-yellow-800 align-middle" title="Kein Verlauf vorhanden – Minimalwert 0.10 verwendet">Fallback</span>
                           ) : null}

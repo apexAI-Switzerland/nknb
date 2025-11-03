@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
     const now = new Date()
     const lastYear = now.getFullYear() - 1
     const currentMonthIndex = now.getMonth()
+    const currentMonthDays = daysInMonth(now.getFullYear(), currentMonthIndex)
     const daysRef = daysInMonth(lastYear, currentMonthIndex)
     const holidayFactor = computeHolidayFactor(now, params.holidayLeadTimeDays)
 
@@ -149,6 +150,7 @@ export async function POST(req: NextRequest) {
       if (finalDailyUsage <= 0) finalDailyUsage = 0.1
 
       const daysUntilStockout = finalDailyUsage > 0 ? currentStock / finalDailyUsage : Infinity
+      const finalMonthlyUsage = finalDailyUsage * currentMonthDays
       const minStock = minByArt.get(artikelnummer) ?? 0
       const mustProduce = (currentStock < minStock) || (daysUntilStockout < params.safetyBuffer)
       const desiredStock = Math.max(finalDailyUsage * params.coverageDays, minStock) * holidayFactor
@@ -161,7 +163,7 @@ export async function POST(req: NextRequest) {
       else if (daysUntilStockout < mediumThreshold) priority = 'Mittel'
 
       const bag_size = bagByArt.get(artikelnummer) || null
-      items.push({ artikelnummer, name, bag_size, current_stock: currentStock, final_daily_usage: finalDailyUsage, days_until_stockout: daysUntilStockout, desired_stock: desiredStock, amount_to_produce: amountToProduce, priority, used_fallback: usedFallback, to_produce: mustProduce })
+      items.push({ artikelnummer, name, bag_size, current_stock: currentStock, final_daily_usage: finalDailyUsage, final_monthly_usage: finalMonthlyUsage, current_month_days: currentMonthDays, days_until_stockout: daysUntilStockout, desired_stock: desiredStock, amount_to_produce: amountToProduce, priority, used_fallback: usedFallback, to_produce: mustProduce })
     }
 
     // Persist run and items (assumes schema exists)
@@ -179,6 +181,7 @@ export async function POST(req: NextRequest) {
       bag_size: i.bag_size,
       current_stock: i.current_stock,
       final_daily_usage: i.final_daily_usage,
+      final_monthly_usage: i.final_monthly_usage,
       days_until_stockout: i.days_until_stockout,
       desired_stock: i.desired_stock,
       amount_to_produce: i.amount_to_produce,
@@ -186,7 +189,15 @@ export async function POST(req: NextRequest) {
       to_produce: i.to_produce,
     }))
     if (rows.length > 0) {
-      const { error: insErr } = await supabase.from('production_plan_items').insert(rows)
+      let { error: insErr } = await supabase.from('production_plan_items').insert(rows)
+      if (insErr && String(insErr.message || '').toLowerCase().includes('final_monthly_usage')) {
+        const rowsWithoutMonthly = rows.map((r: any) => {
+          const { final_monthly_usage, ...rest } = r
+          return rest
+        })
+        const retry = await supabase.from('production_plan_items').insert(rowsWithoutMonthly)
+        insErr = retry.error || null
+      }
       if (insErr) throw insErr
     }
 

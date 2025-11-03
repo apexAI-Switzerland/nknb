@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   title: "Naturkostbar Nährwerteverwaltung",
   description: "Verwaltung von Nährwerten für die Naturkostbar",
   icons: {
-    icon: "/public/favicon_nk.png"
+    icon: "/favicon.ico"
   }
 };
 
