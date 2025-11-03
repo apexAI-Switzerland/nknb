@@ -7,7 +7,7 @@ import Image from 'next/image'
 import { useState } from 'react'
 import { Menu, X } from 'lucide-react'
 
-const navigation = [
+const defaultNavigation = [
   { name: 'Home', href: '/' },
   { name: 'Zutaten', href: '/ingredients' },
   { name: 'Produkte', href: '/products' },
@@ -16,6 +16,17 @@ const navigation = [
 export function Navigation() {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  let navigation = defaultNavigation
+  if (pathname?.startsWith('/production')) {
+    navigation = [
+      { name: 'Home', href: '/' },
+      { name: 'Planung', href: '/production' },
+      { name: 'Einstellungen', href: '/production/admin' },
+    ]
+  } else if (pathname === '/') {
+    navigation = []
+  }
 
   return (
     <nav className="bg-white shadow-sm sticky top-0 z-10">
@@ -65,7 +76,7 @@ export function Navigation() {
       </div>
       
       {/* Mobile menu */}
-      {mobileMenuOpen && (
+      {mobileMenuOpen && navigation.length > 0 && (
         <div className="md:hidden">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t">
             {navigation.map((item) => (
