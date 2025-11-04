@@ -5,11 +5,7 @@ export const createServerClient = () => {
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   if (!supabaseUrl || !supabaseKey) {
-    // Provide default values for build time
-    return createClient(
-      'https://your-project.supabase.co',
-      'your-anon-key'
-    )
+    throw new Error('Supabase environment variables are not set')
   }
 
   return createClient(supabaseUrl, supabaseKey)

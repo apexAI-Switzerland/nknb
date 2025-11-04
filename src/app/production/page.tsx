@@ -175,9 +175,15 @@ export default function ProductionPage() {
     try {
       setComputing(true)
       setResults(null)
+      // Attach Supabase access token for server-side auth
+      const { data: sessionData } = await supabase().auth.getSession()
+      const accessToken = sessionData.session?.access_token
       const res = await fetch('/api/production/compute', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
         body: JSON.stringify({
           inventory: rowsPreview,
           params: { coverageDays, safetyBuffer, holidayLeadTimeDays },

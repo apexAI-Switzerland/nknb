@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { z } from 'zod'
+import { createClient } from '@supabase/supabase-js'
 
 type InventoryRow = {
   Artikelnummer: string
@@ -42,9 +45,97 @@ function computeHolidayFactor(now: Date, lead: number) {
   return 1.0
 }
 
+// Simple in-memory rate limiter (per-process). Suitable for single-user/single-company.
+const rateLimitMap: Map<string, { tokens: number; lastRefillMs: number }> = new Map()
+const RATE_LIMIT_TOKENS = 10 // requests
+const RATE_LIMIT_WINDOW_MS = 60_000 // per minute
+
+function getClientIp(req: NextRequest): string {
+  const xff = req.headers.get('x-forwarded-for') || ''
+  const first = xff.split(',')[0]?.trim()
+  return first || (req as any).ip || 'unknown'
+}
+
+function takeToken(key: string): boolean {
+  const now = Date.now()
+  const entry = rateLimitMap.get(key) || { tokens: RATE_LIMIT_TOKENS, lastRefillMs: now }
+  // Refill
+  const elapsed = now - entry.lastRefillMs
+  if (elapsed >= RATE_LIMIT_WINDOW_MS) {
+    entry.tokens = RATE_LIMIT_TOKENS
+    entry.lastRefillMs = now
+  }
+  if (entry.tokens <= 0) {
+    rateLimitMap.set(key, entry)
+    return false
+  }
+  entry.tokens -= 1
+  rateLimitMap.set(key, entry)
+  return true
+}
+
+const InventoryRowSchema = z.object({
+  Artikelnummer: z.string().min(1).max(128),
+  Artikelname: z.string().max(512).optional(),
+  Verfuegbar: z.number().finite().nonnegative().optional(),
+  Lagerbestand: z.number().finite().nonnegative().optional(),
+})
+
+const ComputeParamsSchema = z.object({
+  coverageDays: z.number().int().min(1).max(365),
+  safetyBuffer: z.number().int().min(1).max(60),
+  holidayLeadTimeDays: z.number().int().min(0).max(60),
+})
+
+const RequestBodySchema = z.object({
+  inventory: z.array(InventoryRowSchema).min(1).max(5000),
+  params: ComputeParamsSchema,
+})
+
 export async function POST(req: NextRequest) {
   try {
-    const { inventory, params }: { inventory: InventoryRow[]; params: ComputeParams } = await req.json()
+    // Rate limit per IP
+    const ip = getClientIp(req)
+    if (!takeToken(ip)) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+    }
+
+    // Auth check (server-side): require signed-in user via cookies or Bearer token
+    const cookieClient = createRouteHandlerClient({ cookies })
+    let { data: authData } = await cookieClient.auth.getUser()
+    let supabase = cookieClient as ReturnType<typeof createRouteHandlerClient>
+    if (!authData?.user) {
+      const authHeader = req.headers.get('authorization') || ''
+      const match = authHeader.match(/^Bearer\s+(.+)$/i)
+      const token = match?.[1]
+      if (token && process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+        const headerClient = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+          { global: { headers: { Authorization: `Bearer ${token}` } } }
+        )
+        const userRes = await headerClient.auth.getUser(token)
+        if (userRes.data.user) {
+          authData = userRes.data
+          // Reassign supabase DB client to use the token-bound client for RLS
+          // @ts-ignore – minimal typing bridge between helpers client and direct client
+          supabase = headerClient
+        }
+      }
+    }
+    if (!authData?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Validate input
+    let parsed
+    try {
+      const json = await req.json()
+      parsed = RequestBodySchema.parse(json)
+    } catch (_e) {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+    }
+    const { inventory, params } = parsed
     const now = new Date()
     const lastYear = now.getFullYear() - 1
     const currentMonthIndex = now.getMonth()
@@ -52,23 +143,24 @@ export async function POST(req: NextRequest) {
     const daysRef = daysInMonth(lastYear, currentMonthIndex)
     const holidayFactor = computeHolidayFactor(now, params.holidayLeadTimeDays)
 
-    const supabase = createServerClient()
+    // Use the same authed supabase client for DB access
+    const db: any = supabase
 
     // Load sales for last year
-    const { data: sales, error: salesErr } = await supabase
+    const { data: sales, error: salesErr } = await db
       .from('sales_history')
       .select('*')
       .eq('year', lastYear)
     if (salesErr) throw salesErr
 
     // Load min stock
-    const { data: mins, error: minErr } = await supabase
+    const { data: mins, error: minErr } = await db
       .from('min_stock')
       .select('*')
     if (minErr) throw minErr
 
     // Load bag sizes
-    const { data: bagSizes, error: bagErr } = await supabase
+    const { data: bagSizes, error: bagErr } = await db
       .from('product_bag_size')
       .select('*')
     if (bagErr) throw bagErr
@@ -167,7 +259,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Persist run and items (assumes schema exists)
-    const { data: run, error: runErr } = await supabase
+    const { data: run, error: runErr } = await db
       .from('production_plan_runs')
       .insert({ coverage_days: params.coverageDays, safety_buffer: params.safetyBuffer, production_time: 0, holiday_lead_time_days: params.holidayLeadTimeDays, holiday_factor: holidayFactor, sales_year: lastYear })
       .select('*')
@@ -189,13 +281,13 @@ export async function POST(req: NextRequest) {
       to_produce: i.to_produce,
     }))
     if (rows.length > 0) {
-      let { error: insErr } = await supabase.from('production_plan_items').insert(rows)
+      let { error: insErr } = await db.from('production_plan_items').insert(rows)
       if (insErr && String(insErr.message || '').toLowerCase().includes('final_monthly_usage')) {
         const rowsWithoutMonthly = rows.map((r: any) => {
           const { final_monthly_usage, ...rest } = r
           return rest
         })
-        const retry = await supabase.from('production_plan_items').insert(rowsWithoutMonthly)
+        const retry = await db.from('production_plan_items').insert(rowsWithoutMonthly)
         insErr = retry.error || null
       }
       if (insErr) throw insErr
@@ -203,7 +295,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ run, items })
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'Unknown error' }, { status: 500 })
+    console.error('Compute API error:', e)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
