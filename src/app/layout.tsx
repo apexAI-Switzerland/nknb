@@ -8,8 +8,8 @@ import { AuthProvider } from "@/components/AuthProvider";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Naturkostbar Nährwerteverwaltung",
-  description: "Verwaltung von Nährwerten für die Naturkostbar",
+  title: "Naturkostbar Portal",
+  description: "Verwaltung von Nährwerten und Produktionsplanung für Naturkostbar",
   icons: {
     icon: "/favicon.ico"
   }
@@ -27,7 +27,7 @@ function Footer() {
             <a href="https://apex-ai.ch" target="_blank" rel="noopener noreferrer" className="text-sm text-gray-500 hover:text-naturkostbar-brown">
               Website
             </a>
-            <a href="https://apex-ai.ch/datenschutzerklaerung/" className="text-sm text-gray-500 hover:text-naturkostbar-brown">
+            <a href="https://apex-ai.ch/privacy-policy/" className="text-sm text-gray-500 hover:text-naturkostbar-brown">
               Datenschutz
             </a>
             <a href="https://apex-ai.ch/impressum/" className="text-sm text-gray-500 hover:text-naturkostbar-brown">
