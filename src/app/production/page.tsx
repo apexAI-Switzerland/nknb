@@ -15,6 +15,11 @@ type InventoryRow = {
   Artikelname?: string
   Verfuegbar?: number
   Lagerbestand?: number
+  MHD_Lieferant?: string | null
+  MHD_Lieferant_Raw?: string | null // Raw formatted string for input field
+  Abweichung?: number | null
+  Lot?: string | null
+  MHD?: string | null
 }
 
 type ResultItem = {
@@ -30,6 +35,8 @@ type ResultItem = {
   priority: 'Hoch' | 'Mittel' | 'Tief'
   used_fallback?: boolean
   to_produce?: boolean
+  mhd?: string | null
+  lot?: string | null
 }
 
 export default function ProductionPage() {
@@ -59,6 +66,79 @@ export default function ProductionPage() {
     bagSample?: { artikelnummer: string, bag_size: string }[],
   }>({})
 
+  // Helper: Parse MM/YY format to Date string (YYYY-MM-DD)
+  const parseMHDLieferant = (value: any): string | null => {
+    if (!value) return null
+    const str = String(value).trim()
+    if (!str) return null
+    // Try to parse MM/YY format
+    const match = str.match(/^(\d{1,2})\/(\d{2})$/)
+    if (match) {
+      const month = parseInt(match[1], 10)
+      const year = parseInt('20' + match[2], 10)
+      if (month >= 1 && month <= 12 && year >= 2000 && year <= 2099) {
+        // Return as YYYY-MM-DD format (first day of month)
+        return `${year}-${String(month).padStart(2, '0')}-01`
+      }
+    }
+    // Try to parse as ISO date string
+    try {
+      const d = new Date(str)
+      if (!isNaN(d.getTime())) {
+        return d.toISOString().split('T')[0]
+      }
+    } catch {}
+    return null
+  }
+
+  // Helper: Format date string to MM/YY for display
+  const formatMHDLieferant = (dateStr: string | null | undefined): string => {
+    if (!dateStr) return ''
+    try {
+      const d = new Date(dateStr)
+      if (isNaN(d.getTime())) return ''
+      const month = d.getMonth() + 1
+      const year = d.getFullYear() % 100
+      return `${month}/${String(year).padStart(2, '0')}`
+    } catch {
+      return ''
+    }
+  }
+
+  // Helper: Get next Monday from today (if today is Monday, return next Monday)
+  const getNextMonday = (): string => {
+    const today = new Date()
+    const dayOfWeek = today.getDay() // 0 = Sunday, 1 = Monday, etc.
+    // If today is Monday (1), we want next Monday (add 7 days)
+    // Otherwise, calculate days until next Monday
+    const daysUntilMonday = dayOfWeek === 1 ? 7 : (8 - dayOfWeek) % 7 || 7
+    const nextMonday = new Date(today)
+    nextMonday.setDate(today.getDate() + daysUntilMonday)
+    return nextMonday.toISOString().split('T')[0]
+  }
+
+  // Helper: Calculate MHD based on logic
+  const calculateMHD = (mhdLieferant: string | null | undefined, abweichung: number | null | undefined): string | null => {
+    if (abweichung !== null && abweichung !== undefined && !isNaN(abweichung)) {
+      // If Abweichung is provided: MHD Lieferant + abweichung months (or current date if no MHD Lieferant)
+      if (mhdLieferant) {
+        const mhdDate = new Date(mhdLieferant)
+        const result = new Date(mhdDate.getFullYear(), mhdDate.getMonth() + abweichung, mhdDate.getDate())
+        return result.toISOString().split('T')[0]
+      } else {
+        // If no MHD Lieferant, use current date + abweichung months
+        const today = new Date()
+        const result = new Date(today.getFullYear(), today.getMonth() + abweichung, today.getDate())
+        return result.toISOString().split('T')[0]
+      }
+    } else if (mhdLieferant) {
+      // If MHD Lieferant exists: use it
+      return mhdLieferant
+    }
+    // Otherwise: null
+    return null
+  }
+
   const arrayToCSV = (data: any[], columns: string[], headers: string[]): string => {
     const esc = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`
     const head = headers.join(',')
@@ -71,9 +151,15 @@ export default function ProductionPage() {
     let display = results as ResultItem[]
     if (hideFallback) display = display.filter(r => !r.used_fallback)
     if (onlyProduce) display = display.filter(r => !!r.to_produce)
-    const cols = ['priority','artikelnummer','name','bag_size','current_stock','final_monthly_usage','days_until_stockout','to_produce']
-    const headers = ['Priorität','Artikelnummer','Name','Beutelgröße','Bestand','Monatsverbrauch','Reichweite (Tage)','Zu Produzieren']
-    const csv = arrayToCSV(display as any[], cols, headers)
+    // Format dates for CSV export
+    const displayWithFormattedDates = display.map(r => ({
+      ...r,
+      mhd_formatted: r.mhd ? new Date(r.mhd).toLocaleDateString('de-DE') : '',
+      lot_formatted: r.lot ? new Date(r.lot).toLocaleDateString('de-DE') : ''
+    }))
+    const cols = ['priority','artikelnummer','name','bag_size','current_stock','final_monthly_usage','days_until_stockout','lot_formatted','mhd_formatted','to_produce']
+    const headers = ['Priorität','Artikelnummer','Name','Beutelgröße','Bestand','Monatsverbrauch','Reichweite (Tage)','Lot','MHD','Zu Produzieren']
+    const csv = arrayToCSV(displayWithFormattedDates as any[], cols, headers)
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -113,7 +199,33 @@ export default function ProductionPage() {
     const artikelname = String(get(['artikelname','name','produktname']) || '').trim()
     const verf = get(['verfügbar','verfuegbar','verfuegbarkeit','bestand','lagerbestand','stock','qty'])
     const current = verf !== undefined && verf !== null ? Number(String(verf).replace(/\s/g,'').replace(',','.')) : undefined
-    return { Artikelnummer: artikelnummer, Artikelname: artikelname, Verfuegbar: current, Lagerbestand: current }
+    
+    // Parse optional MHD Lieferant (MM/YY format)
+    const mhdLieferantRaw = get(['mhd lieferant','mhd_lieferant','mhd-lieferant','mhd'])
+    const mhdLieferant = mhdLieferantRaw ? parseMHDLieferant(mhdLieferantRaw) : null
+    
+    // Parse optional Abweichung (number of months)
+    const abweichungRaw = get(['abweichung','abweichung monate','abweichung_monate'])
+    const abweichung = abweichungRaw !== undefined && abweichungRaw !== null && String(abweichungRaw).trim() !== '' 
+      ? Number(String(abweichungRaw).replace(/\s/g,'').replace(',','.')) 
+      : null
+    
+    // Calculate Lot (next Monday) - always calculated
+    const lot = getNextMonday()
+    
+    // Calculate MHD based on logic
+    const mhd = calculateMHD(mhdLieferant, abweichung)
+    
+    return { 
+      Artikelnummer: artikelnummer, 
+      Artikelname: artikelname, 
+      Verfuegbar: current, 
+      Lagerbestand: current,
+      MHD_Lieferant: mhdLieferant,
+      Abweichung: isNaN(abweichung as number) ? null : abweichung,
+      Lot: lot,
+      MHD: mhd
+    }
   }
 
   const handleUpload = async (file: File) => {
@@ -175,6 +287,15 @@ export default function ProductionPage() {
     try {
       setComputing(true)
       setResults(null)
+      
+      // Ensure all rows have Lot calculated (next Monday from today)
+      const lotValue = getNextMonday()
+      const inventoryWithLot = rowsPreview.map(row => ({
+        ...row,
+        Lot: lotValue, // Recalculate Lot to ensure it's current
+        MHD: calculateMHD(row.MHD_Lieferant, row.Abweichung) // Recalculate MHD
+      }))
+      
       // Attach Supabase access token for server-side auth
       const { data: sessionData } = await supabase().auth.getSession()
       const accessToken = sessionData.session?.access_token
@@ -185,7 +306,7 @@ export default function ProductionPage() {
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },
         body: JSON.stringify({
-          inventory: rowsPreview,
+          inventory: inventoryWithLot,
           params: { coverageDays, safetyBuffer, holidayLeadTimeDays },
         })
       })
@@ -225,7 +346,7 @@ export default function ProductionPage() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Aktueller Lagerbestand</CardTitle>
-            <CardDescription>CSV oder Excel mit Artikelnummer, Artikelname und Lagerbestand hochladen.</CardDescription>
+            <CardDescription>CSV oder Excel mit Artikelnummer, Artikelname und Lagerbestand hochladen. Optionale Spalten: MHD Lieferant (MM/YY) und Abweichung (Monate).</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-3">
@@ -243,25 +364,142 @@ export default function ProductionPage() {
               <Button disabled={uploading} onClick={() => fileInputRef.current?.click()}>{uploading ? 'Lade…' : 'Lagerbestand hochladen'}</Button>
             </div>
             {rowsPreview.length > 0 && (
-              <div className="mt-4 overflow-x-auto">
-                <table className="min-w-full border rounded bg-white text-sm">
-                  <thead>
-                    <tr className="bg-gray-50">
-                      <th className="px-3 py-2 text-left">Artikelnummer</th>
-                      <th className="px-3 py-2 text-left">Artikelname</th>
-                      <th className="px-3 py-2 text-right">Lagerbestand</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(showAllPreview ? rowsPreview : rowsPreview.slice(0, 10)).map((r, i) => (
-                      <tr key={i} className="border-b">
-                        <td className="px-3 py-2">{r.Artikelnummer}</td>
-                        <td className="px-3 py-2">{r.Artikelname}</td>
-                        <td className="px-3 py-2 text-right">{r.Verfuegbar ?? r.Lagerbestand ?? ''}</td>
+              <div className="mt-4">
+                <div className="mb-2 text-sm text-gray-600">
+                  Sie können MHD Lieferant und Abweichung manuell bearbeiten. Lot und MHD werden automatisch berechnet.
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full border rounded bg-white text-sm">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="px-3 py-2 text-left">Artikelnummer</th>
+                        <th className="px-3 py-2 text-left">Artikelname</th>
+                        <th className="px-3 py-2 text-right">Lagerbestand</th>
+                        <th className="px-3 py-2 text-left">MHD Lieferant</th>
+                        <th className="px-3 py-2 text-right">Abweichung (Monate)</th>
+                        <th className="px-3 py-2 text-left">Lot</th>
+                        <th className="px-3 py-2 text-left">MHD</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {(showAllPreview ? rowsPreview : rowsPreview.slice(0, 10)).map((r, i) => (
+                        <tr key={i} className="border-b">
+                          <td className="px-3 py-2">{r.Artikelnummer}</td>
+                          <td className="px-3 py-2">{r.Artikelname}</td>
+                          <td className="px-3 py-2 text-right">{r.Verfuegbar ?? r.Lagerbestand ?? ''}</td>
+                          <td className="px-3 py-2">
+                            <Input
+                              type="text"
+                              placeholder="MM/YY"
+                              value={r.MHD_Lieferant_Raw ?? formatMHDLieferant(r.MHD_Lieferant) ?? ''}
+                              onChange={(e) => {
+                                const input = e.target.value
+                                const cursorPos = e.target.selectionStart || 0
+                                
+                                // Remove all non-digits
+                                const digits = input.replace(/\D/g, '')
+                                
+                                // Format as MM/YY while typing
+                                let formatted = ''
+                                if (digits.length > 0) {
+                                  formatted = digits.substring(0, 2)
+                                  if (digits.length > 2) {
+                                    formatted += '/' + digits.substring(2, 4)
+                                  } else if (digits.length === 2) {
+                                    // Just completed 2 digits, add slash automatically
+                                    formatted += '/'
+                                  }
+                                }
+                                
+                                const newRows = [...rowsPreview]
+                                
+                                // Store raw formatted value for display
+                                newRows[i].MHD_Lieferant_Raw = formatted
+                                
+                                // Only parse when we have complete MM/YY format (5 chars: MM/YY)
+                                let parsed: string | null = null
+                                if (formatted.length === 5 && formatted.includes('/')) {
+                                  // Full format MM/YY entered, parse it
+                                  parsed = parseMHDLieferant(formatted)
+                                  // Clear raw once parsed
+                                  newRows[i].MHD_Lieferant_Raw = null
+                                } else if (formatted.length === 0) {
+                                  // Empty, set to null
+                                  parsed = null
+                                  newRows[i].MHD_Lieferant_Raw = null
+                                } else {
+                                  // Partial input, keep current parsed value
+                                  parsed = r.MHD_Lieferant
+                                }
+                                
+                                newRows[i].MHD_Lieferant = parsed
+                                newRows[i].MHD = calculateMHD(parsed, newRows[i].Abweichung)
+                                setRowsPreview(newRows)
+                                
+                                // Auto-position cursor: after slash when 2 digits entered
+                                setTimeout(() => {
+                                  const inputEl = e.target as HTMLInputElement
+                                  if (inputEl) {
+                                    if (digits.length === 2 && formatted.length === 3) {
+                                      // Just typed 2 digits and slash was added, move cursor after slash
+                                      inputEl.setSelectionRange(3, 3)
+                                    } else if (digits.length > 2) {
+                                      // Typing year digits, keep cursor at end
+                                      inputEl.setSelectionRange(formatted.length, formatted.length)
+                                    } else {
+                                      // Adjust cursor position
+                                      let newCursorPos = cursorPos
+                                      if (input.length > formatted.length) {
+                                        // User deleted something
+                                        newCursorPos = Math.min(cursorPos, formatted.length)
+                                      }
+                                      inputEl.setSelectionRange(newCursorPos, newCursorPos)
+                                    }
+                                  }
+                                }, 0)
+                              }}
+                              onKeyDown={(e) => {
+                                // Allow backspace, delete, arrow keys, tab
+                                if (['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.key)) {
+                                  return
+                                }
+                                // Allow digits
+                                if (/^\d$/.test(e.key)) {
+                                  return
+                                }
+                                // Block everything else
+                                e.preventDefault()
+                              }}
+                              maxLength={5}
+                              className="w-20 h-8 text-sm"
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <Input
+                              type="number"
+                              placeholder="Monate"
+                              value={r.Abweichung ?? ''}
+                              onChange={(e) => {
+                                const newRows = [...rowsPreview]
+                                const val = e.target.value === '' ? null : Number(e.target.value)
+                                newRows[i].Abweichung = val
+                                newRows[i].MHD = calculateMHD(newRows[i].MHD_Lieferant, val)
+                                setRowsPreview(newRows)
+                              }}
+                              className="w-24 h-8 text-sm"
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            {r.Lot ? new Date(r.Lot).toLocaleDateString('de-DE') : ''}
+                          </td>
+                          <td className="px-3 py-2">
+                            {r.MHD ? new Date(r.MHD).toLocaleDateString('de-DE') : ''}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
                 {rowsPreview.length > 10 && (
                   <div className="mt-3">
                     <Button variant="outline" onClick={() => setShowAllPreview(!showAllPreview)}>
@@ -359,6 +597,8 @@ export default function ProductionPage() {
                       <th className="px-3 py-2 text-right">Bestand</th>
                       <th className="px-3 py-2 text-right">Monatsverbrauch</th>
                       <th className="px-3 py-2 text-right">Reichweite (Tage)</th>
+                      <th className="px-3 py-2 text-left">Lot</th>
+                      <th className="px-3 py-2 text-left">MHD</th>
                       <th className="px-3 py-2 text-left">Zu produzieren</th>
                     </tr>
                   </thead>
@@ -381,6 +621,8 @@ export default function ProductionPage() {
                           ) : null}
                         </td>
                         <td className="px-3 py-2 text-right">{r.days_until_stockout.toFixed(1)}</td>
+                        <td className="px-3 py-2">{r.lot ? new Date(r.lot).toLocaleDateString('de-DE') : ''}</td>
+                        <td className="px-3 py-2">{r.mhd ? new Date(r.mhd).toLocaleDateString('de-DE') : ''}</td>
                         <td className="px-3 py-2">{r.to_produce ? 'Ja' : 'Nein'}</td>
                       </tr>
                     ))}

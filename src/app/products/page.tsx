@@ -1256,18 +1256,30 @@ export default function ProductsPage() {
                         <div className="mb-2 font-semibold">Zutaten:</div>
                         {loadingIngredients[product.ID] && <div>Lade Zutaten...</div>}
                         {!loadingIngredients[product.ID] && productIngredients[product.ID] && productIngredients[product.ID].length > 0 ? (
-                          fetchIngredientNames(productIngredients[product.ID]),
-                          <ul className="mb-4 list-disc list-inside">
-                            {productIngredients[product.ID].map(ing => (
-                              ing.IngredientType === 'ingredient' ? (
-                                <li key={ing.ID}>
-                                  {ingredientNames[`ingredient:${ing.IngredientID}`] || `Zutat: ${ing.IngredientID}`} – <b>{ing.Amount} g</b>
-                                </li>
-                              ) : (
-                                <DecomposedIngredientList key={ing.ID} productId={ing.IngredientID} amount={ing.Amount} />
-                              )
-                            ))}
-                          </ul>
+                          (() => {
+                            fetchIngredientNames(productIngredients[product.ID]);
+                            // Calculate total weight of all ingredients
+                            const totalWeight = productIngredients[product.ID].reduce((sum, ing) => sum + (ing.Amount || 0), 0);
+                            return (
+                              <ul className="mb-4 list-disc list-inside">
+                                {productIngredients[product.ID].map(ing => (
+                                  ing.IngredientType === 'ingredient' ? (
+                                    <li key={ing.ID}>
+                                      {ingredientNames[`ingredient:${ing.IngredientID}`] || `Zutat: ${ing.IngredientID}`}
+                                      {totalWeight > 0 && (
+                                        <> – <b>{((ing.Amount / totalWeight) * 100).toFixed(1)}%</b> ({ing.Amount} g)</>
+                                      )}
+                                      {totalWeight === 0 && (
+                                        <> – {ing.Amount} g</>
+                                      )}
+                                    </li>
+                                  ) : (
+                                    <DecomposedIngredientList key={ing.ID} productId={ing.IngredientID} amount={ing.Amount} totalWeight={totalWeight} />
+                                  )
+                                ))}
+                              </ul>
+                            );
+                          })()
                         ) : !loadingIngredients[product.ID] && <div className="mb-4 text-gray-400">Keine Zutaten gefunden</div>}
                         <div><b>Nährwerte (pro 100g):</b></div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
@@ -1408,7 +1420,7 @@ export default function ProductsPage() {
   )
 }
 
-function DecomposedIngredientList({ productId, amount }: { productId: number, amount: number }) {
+function DecomposedIngredientList({ productId, amount, totalWeight }: { productId: number, amount: number, totalWeight: number }) {
   const [ingredients, setIngredients] = useState<Array<{ name: string; amount: number }>>([]);
   useEffect(() => {
     decomposeProductIngredients(productId, amount).then(setIngredients);
@@ -1419,7 +1431,15 @@ function DecomposedIngredientList({ productId, amount }: { productId: number, am
   return (
     <>
       {sorted.map((item, idx) => (
-        <li key={idx}>{item.name} – <b>{item.amount.toFixed(1)} g</b></li>
+        <li key={idx}>
+          {item.name}
+          {totalWeight > 0 && (
+            <> – <b>{((item.amount / totalWeight) * 100).toFixed(1)}%</b> ({item.amount.toFixed(1)} g)</>
+          )}
+          {totalWeight === 0 && (
+            <> – {item.amount.toFixed(1)} g</>
+          )}
+        </li>
       ))}
     </>
   );

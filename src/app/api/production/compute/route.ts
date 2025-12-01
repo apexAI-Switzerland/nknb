@@ -9,6 +9,10 @@ type InventoryRow = {
   Artikelname?: string
   Verfuegbar?: number
   Lagerbestand?: number
+  MHD_Lieferant?: string | null
+  Abweichung?: number | null
+  Lot?: string | null
+  MHD?: string | null
 }
 
 type ComputeParams = {
@@ -79,6 +83,10 @@ const InventoryRowSchema = z.object({
   Artikelname: z.string().max(512).optional(),
   Verfuegbar: z.number().finite().nonnegative().optional(),
   Lagerbestand: z.number().finite().nonnegative().optional(),
+  MHD_Lieferant: z.string().nullable().optional(),
+  Abweichung: z.number().int().nullable().optional(),
+  Lot: z.string().nullable().optional(),
+  MHD: z.string().nullable().optional(),
 })
 
 const ComputeParamsSchema = z.object({
@@ -153,33 +161,72 @@ export async function POST(req: NextRequest) {
       .eq('year', lastYear)
     if (salesErr) throw salesErr
 
-    // Load min stock
-    const { data: mins, error: minErr } = await db
-      .from('min_stock')
+    // Load product infos (consolidated: mindestbestand + beutelgroesse)
+    const { data: productInfos, error: infoErr } = await db
+      .from('product_infos')
       .select('*')
-    if (minErr) throw minErr
-
-    // Load bag sizes
-    const { data: bagSizes, error: bagErr } = await db
-      .from('product_bag_size')
-      .select('*')
-    if (bagErr) throw bagErr
+    if (infoErr) throw infoErr
 
     const salesByArt = new Map<string, any>()
     for (const s of sales || []) salesByArt.set(String(s.artikelnummer), s)
     const minByArt = new Map<string, number>()
-    for (const m of mins || []) minByArt.set(String(m.artikelnummer), Number(m.global_min_stock) || 0)
+    const bagByArt = new Map<string, string>()
+    for (const info of productInfos || []) {
+      const key = String(info.artikelnummer || '').trim()
+      if (key) {
+        minByArt.set(key, Number(info.mindestbestand) || 0)
+        const bag = String(info.beutelgroesse || '').trim()
+        if (bag) bagByArt.set(key, bag)
+      }
+    }
 
     const monthKeys = ['jan','feb','mär','apr','mai','jun','jul','aug','sep','okt','nov','dez']
     const monthKey = monthKeys[currentMonthIndex]
 
-    const items: any[] = []
-    const bagByArt = new Map<string, string>()
-    for (const b of bagSizes || []) {
-      const key = String(b.artikelnummer || '').trim()
-      const val = String(b.bag_size || '').trim()
-      if (key) bagByArt.set(key, val)
+    // Helper: Get months relative to current month for proper weighting
+    const getRecentMonthIndices = (currentIdx: number, count: number): number[] => {
+      const indices: number[] = []
+      for (let i = 0; i < count; i++) {
+        // Go backwards from current month (wrapping around year)
+        indices.push((currentIdx - i + 12) % 12)
+      }
+      return indices
     }
+    const recentMonthIndices = new Set(getRecentMonthIndices(currentMonthIndex, 3))
+
+    // Helper: Soft outlier clamp using IQR method (less aggressive than P10-P90 for small datasets)
+    const clampValuesIQR = (arr: number[]): number[] => {
+      if (arr.length < 4) return arr // Not enough data for IQR
+      const sorted = [...arr].sort((a,b)=>a-b)
+      const q1Idx = Math.floor(sorted.length * 0.25)
+      const q3Idx = Math.floor(sorted.length * 0.75)
+      const q1 = sorted[q1Idx]
+      const q3 = sorted[q3Idx]
+      const iqr = q3 - q1
+      // Use 1.5*IQR rule but with soft clamping (less aggressive)
+      const lower = q1 - 1.5 * iqr
+      const upper = q3 + 1.5 * iqr
+      return arr.map(v => Math.min(upper, Math.max(lower, v)))
+    }
+
+    // Helper: Calculate simple linear trend coefficient
+    const calculateTrend = (values: number[]): number => {
+      if (values.length < 3) return 0
+      const n = values.length
+      let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0
+      for (let i = 0; i < n; i++) {
+        sumX += i
+        sumY += values[i]
+        sumXY += i * values[i]
+        sumX2 += i * i
+      }
+      const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX)
+      // Normalize slope by average to get percentage change per month
+      const avg = sumY / n
+      return avg > 0 ? slope / avg : 0
+    }
+
+    const items: any[] = []
     for (const row of inventory || []) {
       const artikelnummer = String(row.Artikelnummer || '').trim()
       if (!artikelnummer) continue
@@ -189,56 +236,63 @@ export async function POST(req: NextRequest) {
       const refMonth = s ? Number(s[monthKey]) || 0 : 0
       // monthly daily usage
       const monthlyDailyUsage = daysRef > 0 ? refMonth / daysRef : 0
-      // annual avg from available months with simple outlier capping and recent-month weighting
-      let values: number[] = []
+      
+      // Build chronological data with month indices preserved
+      const monthlyData: { monthIdx: number, value: number }[] = []
       if (s) {
-        for (const k of monthKeys) {
-          const v = Number(s[k])
-          if (!isNaN(v) && v > 0) values.push(v)
+        for (let i = 0; i < monthKeys.length; i++) {
+          const k = monthKeys[i]
+          const v = s[k]
+          if (v !== null && v !== undefined && !isNaN(Number(v)) && Number(v) > 0) {
+            monthlyData.push({ monthIdx: i, value: Number(v) })
+          }
         }
       }
-      const cnt = values.length
-      // Outlier clamp to P10..P90
-      const clampValues = (arr: number[]): number[] => {
-        if (arr.length === 0) return arr
-        const sorted = [...arr].sort((a,b)=>a-b)
-        const q = (p: number) => {
-          const idx = (sorted.length - 1) * p
-          const lo = Math.floor(idx), hi = Math.ceil(idx)
-          if (lo === hi) return sorted[lo]
-          return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo)
-        }
-        const p10 = q(0.10), p90 = q(0.90)
-        return arr.map(v => Math.min(p90, Math.max(p10, v)))
-      }
-      const clamped = clampValues(values)
-      // Exponential-like recent weight: last 3 months x2 if present
-      let weightedSum = 0, weightTot = 0
-      for (let i = 0; i < clamped.length; i++) {
-        const v = clamped[i]
-        // approximate recency using position from end of monthKeys
-        // map values in chronological order matching monthKeys
-      }
-      // rebuild in chronological order based on monthKeys
-      const chronological: number[] = []
-      if (s) {
-        for (const k of monthKeys) {
-          const v = Number(s[k])
-          if (!isNaN(v) && v > 0) chronological.push(v)
-        }
-      }
-      const clampedChrono = clampValues(chronological)
-      for (let i = 0; i < clampedChrono.length; i++) {
-        const v = clampedChrono[i]
-        const isRecent = i >= clampedChrono.length - 3
-        const w = isRecent ? 2 : 1
-        weightedSum += v * w
-        weightTot += w
-      }
-      const monthlyAvg = cnt > 0 && weightTot > 0 ? weightedSum / weightTot : 0
-      const annualDailyUsage = (monthlyAvg * 12) / 365
+      
+      const cnt = monthlyData.length
       const usedFallback = cnt === 0
-      let finalDailyUsage = !usedFallback ? (0.7 * monthlyDailyUsage + 0.3 * annualDailyUsage) : 0.1
+      
+      let finalDailyUsage: number
+      if (usedFallback) {
+        // Improved fallback: use minimum stock / coverage days if available, otherwise small value
+        const minStock = minByArt.get(artikelnummer) ?? 0
+        finalDailyUsage = minStock > 0 ? minStock / params.coverageDays : 0.1
+      } else {
+        // Apply IQR-based outlier handling (less aggressive than P10-P90)
+        const values = monthlyData.map(d => d.value)
+        const clampedValues = clampValuesIQR(values)
+        
+        // Calculate weighted average with proper recent-month weighting
+        let weightedSum = 0, weightTot = 0
+        for (let i = 0; i < monthlyData.length; i++) {
+          const v = clampedValues[i]
+          const monthIdx = monthlyData[i].monthIdx
+          // Weight recent months (relative to current month) more heavily
+          const isRecent = recentMonthIndices.has(monthIdx)
+          const w = isRecent ? 2.0 : 1.0
+          weightedSum += v * w
+          weightTot += w
+        }
+        const weightedMonthlyAvg = weightTot > 0 ? weightedSum / weightTot : 0
+        
+        // Calculate trend adjustment (cap at ±20% to avoid extreme predictions)
+        const trendCoeff = calculateTrend(values)
+        const trendAdjustment = Math.max(-0.20, Math.min(0.20, trendCoeff * 3)) // 3 months projection
+        
+        // Convert to daily usage
+        const avgDaysPerMonth = 30.44
+        const annualDailyUsage = weightedMonthlyAvg / avgDaysPerMonth
+        
+        // Combine: 70% current month, 30% weighted average, apply trend
+        const baseDailyUsage = refMonth > 0 
+          ? (0.7 * monthlyDailyUsage + 0.3 * annualDailyUsage)
+          : annualDailyUsage
+        
+        // Apply trend adjustment (positive trend = increase forecast, negative = decrease)
+        finalDailyUsage = baseDailyUsage * (1 + trendAdjustment)
+      }
+      
+      // Ensure minimum positive value
       if (finalDailyUsage <= 0) finalDailyUsage = 0.1
 
       const daysUntilStockout = finalDailyUsage > 0 ? currentStock / finalDailyUsage : Infinity
@@ -255,7 +309,32 @@ export async function POST(req: NextRequest) {
       else if (daysUntilStockout < mediumThreshold) priority = 'Mittel'
 
       const bag_size = bagByArt.get(artikelnummer) || null
-      items.push({ artikelnummer, name, bag_size, current_stock: currentStock, final_daily_usage: finalDailyUsage, final_monthly_usage: finalMonthlyUsage, current_month_days: currentMonthDays, days_until_stockout: daysUntilStockout, desired_stock: desiredStock, amount_to_produce: amountToProduce, priority, used_fallback: usedFallback, to_produce: mustProduce })
+      
+      // Extract MHD, Lot, and related fields from inventory row
+      const mhdLieferant = row.MHD_Lieferant || null
+      const abweichung = row.Abweichung !== null && row.Abweichung !== undefined ? Number(row.Abweichung) : null
+      const lot = row.Lot || null
+      const mhd = row.MHD || null
+      
+      items.push({ 
+        artikelnummer, 
+        name, 
+        bag_size, 
+        current_stock: currentStock, 
+        final_daily_usage: finalDailyUsage, 
+        final_monthly_usage: finalMonthlyUsage, 
+        current_month_days: currentMonthDays, 
+        days_until_stockout: daysUntilStockout, 
+        desired_stock: desiredStock, 
+        amount_to_produce: amountToProduce, 
+        priority, 
+        used_fallback: usedFallback, 
+        to_produce: mustProduce,
+        mhd_lieferant: mhdLieferant,
+        abweichung: abweichung,
+        lot: lot,
+        mhd: mhd
+      })
     }
 
     // Persist run and items (assumes schema exists)
@@ -279,6 +358,10 @@ export async function POST(req: NextRequest) {
       amount_to_produce: i.amount_to_produce,
       priority: i.priority,
       to_produce: i.to_produce,
+      mhd_lieferant: i.mhd_lieferant,
+      abweichung: i.abweichung,
+      lot: i.lot,
+      mhd: i.mhd,
     }))
     if (rows.length > 0) {
       let { error: insErr } = await db.from('production_plan_items').insert(rows)
