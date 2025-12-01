@@ -429,7 +429,7 @@ export default function ProductionPage() {
                                   newRows[i].MHD_Lieferant_Raw = null
                                 } else {
                                   // Partial input, keep current parsed value
-                                  parsed = r.MHD_Lieferant
+                                  parsed = r.MHD_Lieferant ?? null
                                 }
                                 
                                 newRows[i].MHD_Lieferant = parsed
