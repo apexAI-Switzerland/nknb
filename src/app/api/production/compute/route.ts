@@ -100,6 +100,9 @@ const RequestBodySchema = z.object({
   params: ComputeParamsSchema,
 })
 
+const DEFAULT_MONTHLY_BURN = 30
+const DEFAULT_DAILY_USAGE = DEFAULT_MONTHLY_BURN / 30.44
+
 export async function POST(req: NextRequest) {
   try {
     // Rate limit per IP
@@ -256,7 +259,7 @@ export async function POST(req: NextRequest) {
       if (usedFallback) {
         // Improved fallback: use minimum stock / coverage days if available, otherwise small value
         const minStock = minByArt.get(artikelnummer) ?? 0
-        finalDailyUsage = minStock > 0 ? minStock / params.coverageDays : 0.1
+        finalDailyUsage = minStock > 0 ? minStock / params.coverageDays : DEFAULT_DAILY_USAGE
       } else {
         // Apply IQR-based outlier handling (less aggressive than P10-P90)
         const values = monthlyData.map(d => d.value)
@@ -293,7 +296,7 @@ export async function POST(req: NextRequest) {
       }
       
       // Ensure minimum positive value
-      if (finalDailyUsage <= 0) finalDailyUsage = 0.1
+      if (finalDailyUsage <= 0) finalDailyUsage = DEFAULT_DAILY_USAGE
 
       const daysUntilStockout = finalDailyUsage > 0 ? currentStock / finalDailyUsage : Infinity
       const finalMonthlyUsage = finalDailyUsage * currentMonthDays

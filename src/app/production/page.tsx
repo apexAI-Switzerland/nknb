@@ -118,22 +118,25 @@ export default function ProductionPage() {
   }
 
   // Helper: Calculate MHD based on logic
-  const calculateMHD = (mhdLieferant: string | null | undefined, abweichung: number | null | undefined): string | null => {
+  const calculateMHD = (
+    baseMHD: string | null | undefined,
+    abweichung: number | null | undefined
+  ): string | null => {
+    const baseDateStr = baseMHD || null
     if (abweichung !== null && abweichung !== undefined && !isNaN(abweichung)) {
-      // If Abweichung is provided: MHD Lieferant + abweichung months (or current date if no MHD Lieferant)
-      if (mhdLieferant) {
-        const mhdDate = new Date(mhdLieferant)
-        const result = new Date(mhdDate.getFullYear(), mhdDate.getMonth() + abweichung, mhdDate.getDate())
-        return result.toISOString().split('T')[0]
-      } else {
-        // If no MHD Lieferant, use current date + abweichung months
-        const today = new Date()
-        const result = new Date(today.getFullYear(), today.getMonth() + abweichung, today.getDate())
-        return result.toISOString().split('T')[0]
+      // If Abweichung is provided: base MHD + abweichung months (skip if no base date)
+      if (baseDateStr) {
+        const mhdDate = new Date(baseDateStr)
+        if (!isNaN(mhdDate.getTime())) {
+          const result = new Date(mhdDate.getFullYear(), mhdDate.getMonth() + abweichung, mhdDate.getDate())
+          return result.toISOString().split('T')[0]
+        }
       }
-    } else if (mhdLieferant) {
-      // If MHD Lieferant exists: use it
-      return mhdLieferant
+      // If no valid base date, do not use current date; return null
+      return null
+    } else if (baseDateStr) {
+      // If base MHD exists and no abweichung: use it
+      return baseDateStr
     }
     // Otherwise: null
     return null
@@ -293,7 +296,7 @@ export default function ProductionPage() {
       const inventoryWithLot = rowsPreview.map(row => ({
         ...row,
         Lot: lotValue, // Recalculate Lot to ensure it's current
-        MHD: calculateMHD(row.MHD_Lieferant, row.Abweichung) // Recalculate MHD
+        MHD: calculateMHD(row.MHD ?? row.MHD_Lieferant, row.Abweichung) // Recalculate MHD based on set MHD, not today
       }))
       
       // Attach Supabase access token for server-side auth
