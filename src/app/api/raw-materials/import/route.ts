@@ -79,6 +79,7 @@ export async function POST(req: NextRequest) {
       const name = String(get(['name', 'artikelname', 'produktname', 'bezeichnung']) || '').trim()
       const herkunft = String(get(['herkunft', 'origin', 'ursprung']) || '').trim() || null
       const lieferant = String(get(['lieferant', 'supplier', 'vendor']) || '').trim() || null
+      const zwischenhaendler = String(get(['zwischenhaendler', 'zwischenhändler', 'wholesaler', 'intermediary']) || '').trim() || null
       const lieferzeit = String(get(['lieferzeit', 'leadtime', 'lead_time', 'lead time']) || '').trim() || null
 
       // Initialize record with all months set to null for consistent data structure
@@ -88,6 +89,7 @@ export async function POST(req: NextRequest) {
         year: year || 2025,
         herkunft,
         lieferant,
+        zwischenhaendler,
         lieferzeit,
         // Initialize all 12 months to null
         jan: null,

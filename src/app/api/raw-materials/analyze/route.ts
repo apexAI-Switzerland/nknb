@@ -26,6 +26,7 @@ type ConsumptionData = {
   dez: number | null
   herkunft: string | null
   lieferant: string | null
+  zwischenhaendler: string | null
   lieferzeit: string | null
 }
 
@@ -145,6 +146,7 @@ export async function POST(req: NextRequest) {
       const name = item.name || consumption?.name || ''
       const herkunft = consumption?.herkunft || null
       const lieferant = consumption?.lieferant || null
+      const zwischenhaendler = consumption?.zwischenhaendler || null
       const lieferzeitStr = consumption?.lieferzeit || null
       const lieferzeit = lieferzeitStr ? parseFloat(lieferzeitStr) : null
 
@@ -243,6 +245,7 @@ export async function POST(req: NextRequest) {
         name,
         herkunft,
         lieferant,
+        zwischenhaendler,
         lagerbestand,
         avgVerbrauchMonat: Math.round(avgVerbrauchMonat * 100) / 100,
         reichweiteMonat: reichweiteMonat === Infinity ? null : Math.round(reichweiteMonat * 10) / 10,
