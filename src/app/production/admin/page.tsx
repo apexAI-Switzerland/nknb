@@ -288,7 +288,7 @@ export default function ProductionAdminPage() {
           <Card>
             <CardHeader>
               <CardTitle>Import – Verkaufszahlen</CardTitle>
-              <CardDescription>CSV/XLSX mit Spalten „Artikelnummer", „ArtName/Artikelname" und Monats-Spalten „Jan 24" … „Dez 24".</CardDescription>
+              <CardDescription>CSV/XLSX mit Spalten: Artikelnummer, ArtName/Artikelname und Monats-Spalten (Jan 24 … Dez 24).</CardDescription>
             </CardHeader>
             <CardContent>
               <input ref={salesInputRef} type="file" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" onChange={(e) => { const f = e.target.files?.[0]; if (f) importSales(f) }} style={{ display: 'none' }} />
@@ -387,7 +387,7 @@ export default function ProductionAdminPage() {
           <Card>
             <CardHeader>
               <CardTitle>Produktinfos</CardTitle>
-              <CardDescription>CSV/XLSX mit Spalten „Artikelnummer", „Artikelname", „Mindestbestand", „Beutelgröße" (S/M/L).</CardDescription>
+              <CardDescription>CSV/XLSX mit Spalten: Artikelnummer, Artikelname, Mindestbestand, Beutelgröße (S/M/L).</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="mb-4">
