@@ -11,7 +11,7 @@ export default function Home() {
 
         <p className="text-center text-gray-600 mb-8">Bitte wählen Sie einen Bereich:</p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-16">
           <Link href="/ingredients" className="block">
             <div className="h-32 flex items-center justify-center text-xl font-medium naturkostbar-accent-bg rounded-lg shadow-md transition hover:shadow-lg transform hover:scale-[1.02] text-white">
               Nährwerteverwaltung
@@ -20,6 +20,11 @@ export default function Home() {
           <Link href="/production" className="block">
             <div className="h-32 flex items-center justify-center text-xl font-medium naturkostbar-accent-bg rounded-lg shadow-md transition hover:shadow-lg transform hover:scale-[1.02] text-white">
               Produktionsplanung
+            </div>
+          </Link>
+          <Link href="/raw-materials" className="block">
+            <div className="h-32 flex items-center justify-center text-xl font-medium naturkostbar-accent-bg rounded-lg shadow-md transition hover:shadow-lg transform hover:scale-[1.02] text-white">
+              Rohstoffplanung
             </div>
           </Link>
         </div>

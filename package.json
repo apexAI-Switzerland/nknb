@@ -7,7 +7,9 @@
     "build:css": "NODE_ENV=production tailwindcss -i ./src/app/globals.css -o ./public/styles.css --minify",
     "build": "npm run build:css && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "test:ci": "npm run lint && npm run type-check && npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "3.3.4",

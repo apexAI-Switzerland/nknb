@@ -1,5 +1,7 @@
 # Naturkostbar Ingredient Management System
 
+![CI](https://github.com/YOUR_USERNAME/nknb/actions/workflows/ci.yml/badge.svg)
+
 A centralized system for managing ingredients, products, and recipes for Naturkostbar.
 
 ## Features
@@ -56,11 +58,41 @@ The system uses the following tables in Supabase:
 - `product_ingredients` - Many-to-many relationship between products and ingredients
 - `recipe_ingredients` - Many-to-many relationship between recipes and ingredients
 
+## Development
+
+### Available Scripts
+
+```bash
+npm run dev        # Start development server
+npm run build      # Build for production
+npm run lint       # Run ESLint
+npm run type-check # Run TypeScript type checking
+npm run test:ci    # Run all CI checks locally
+```
+
+### Pre-commit Checks
+
+Before committing, run the CI checks locally:
+
+```bash
+npm run test:ci
+```
+
+## CI/CD Pipeline
+
+This project uses GitHub Actions for continuous integration. On every pull request and push to main:
+
+- **Lint**: ESLint checks for code quality
+- **Type Check**: TypeScript validation
+- **Build**: Ensures the application compiles successfully
+- **Security Audit**: Scans for vulnerable dependencies and dangerous code patterns
+
 ## Contributing
 
 1. Create a new branch for your feature
 2. Make your changes
-3. Submit a pull request
+3. Ensure CI checks pass: `npm run test:ci`
+4. Submit a pull request
 
 ## License
 

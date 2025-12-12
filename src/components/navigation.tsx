@@ -24,6 +24,11 @@ export function Navigation() {
       { name: 'Planung', href: '/production' },
       { name: 'Einstellungen', href: '/production/admin' },
     ]
+  } else if (pathname?.startsWith('/raw-materials')) {
+    navigation = [
+      { name: 'Home', href: '/' },
+      { name: 'Bestandsanalyse', href: '/raw-materials' },
+    ]
   } else if (pathname === '/') {
     navigation = []
   }

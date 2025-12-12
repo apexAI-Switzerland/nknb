@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+env:
+  # Dummy values for build - real values are set in deployment
+  NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-key
+
+jobs:
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: TypeScript Type Check
+        run: npx tsc --noEmit
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Check for vulnerable patterns
+        run: |
+          echo "Checking for dangerous patterns..."
+          
+          # Check for command injection vulnerabilities
+          if grep -r "child_process" --include="*.ts" --include="*.tsx" --include="*.js" src/; then
+            echo "⚠️ Warning: child_process usage detected - review for security"
+          fi
+          
+          if grep -r "exec(" --include="*.ts" --include="*.tsx" --include="*.js" src/; then
+            echo "⚠️ Warning: exec() usage detected - review for security"
+          fi
+          
+          if grep -r "eval(" --include="*.ts" --include="*.tsx" --include="*.js" src/; then
+            echo "❌ Error: eval() usage detected - this is a security risk!"
+            exit 1
+          fi
+          
+          echo "✅ No critical security patterns detected"
+
