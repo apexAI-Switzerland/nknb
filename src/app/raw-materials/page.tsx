@@ -32,6 +32,7 @@ type ConsumptionRow = {
   dez?: number
   herkunft?: string
   lieferant?: string
+  zwischenhaendler?: string
   lieferzeit?: string
 }
 
@@ -42,6 +43,7 @@ type AnalysisResult = {
   name: string
   herkunft: string | null
   lieferant: string | null
+  zwischenhaendler: string | null
   lagerbestand: number
   avgVerbrauchMonat: number
   reichweiteMonat: number | null
@@ -110,6 +112,7 @@ export default function RawMaterialsPage() {
     const name = String(get(['name', 'artikelname', 'produktname', 'bezeichnung']) || '').trim()
     const herkunft = String(get(['herkunft', 'origin']) || '').trim() || undefined
     const lieferant = String(get(['lieferant', 'supplier']) || '').trim() || undefined
+    const zwischenhaendler = String(get(['zwischenhaendler', 'zwischenhändler', 'wholesaler', 'intermediary']) || '').trim() || undefined
     const lieferzeit = String(get(['lieferzeit', 'leadtime', 'lead time']) || '').trim() || undefined
 
     const parseNum = (val: any) => {
@@ -135,6 +138,7 @@ export default function RawMaterialsPage() {
       dez: parseNum(get(['dez', 'dezember', 'dec'])),
       herkunft,
       lieferant,
+      zwischenhaendler,
       lieferzeit
     }
   }
@@ -378,12 +382,13 @@ export default function RawMaterialsPage() {
     if (!results || results.length === 0) return
     
     const esc = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`
-    const headers = ['SKU', 'Name', 'Herkunft', 'Lieferant', 'Lagerbestand (kg)', 'Ø Verbrauch/Monat (kg)', 'Reichweite', 'Lieferzeit (Monate)', 'Status', 'Trend']
+    const headers = ['SKU', 'Name', 'Herkunft', 'Lieferant', 'Zwischenhändler', 'Lagerbestand (kg)', 'Ø Verbrauch/Monat (kg)', 'Reichweite', 'Lieferzeit (Monate)', 'Status', 'Trend']
     const rows = results.map(r => [
       esc(r.sku),
       esc(r.name),
       esc(r.herkunft || ''),
       esc(r.lieferant || ''),
+      esc(r.zwischenhaendler || ''),
       r.lagerbestand,
       r.avgVerbrauchMonat,
       esc(formatReichweite(r.reichweiteMonat)),
@@ -460,7 +465,6 @@ export default function RawMaterialsPage() {
 
                 {inventoryRows.length > 0 && !results && (
                   <div className="mt-4">
-                    <div className="text-sm text-gray-600 mb-2">{inventoryRows.length} Rohstoffe geladen:</div>
                     <div className="overflow-x-auto max-h-64">
                       <table className="min-w-full border rounded bg-white text-sm">
                         <thead>
@@ -566,6 +570,7 @@ export default function RawMaterialsPage() {
                         <th className="px-3 py-2 text-left">Name</th>
                         <th className="px-3 py-2 text-left">Herkunft</th>
                         <th className="px-3 py-2 text-left">Lieferant</th>
+                        <th className="px-3 py-2 text-left">Zwischenhändler</th>
                         <th className="px-3 py-2 text-right">Lagerbestand (kg)</th>
                         <th className="px-3 py-2 text-right">Ø Verbrauch/Monat</th>
                         <th className="px-3 py-2 text-right">Reichweite</th>
@@ -581,6 +586,7 @@ export default function RawMaterialsPage() {
                           <td className="px-3 py-2">{r.name}</td>
                           <td className="px-3 py-2 text-gray-600">{r.herkunft || '-'}</td>
                           <td className="px-3 py-2 text-gray-600">{r.lieferant || '-'}</td>
+                          <td className="px-3 py-2 text-gray-600">{r.zwischenhaendler || '-'}</td>
                           <td className="px-3 py-2 text-right">{r.lagerbestand.toFixed(2)}</td>
                           <td className="px-3 py-2 text-right">
                             {r.usedFallback ? (
@@ -623,7 +629,7 @@ export default function RawMaterialsPage() {
             <CardHeader>
               <CardTitle>Verbrauchsdaten importieren</CardTitle>
               <CardDescription>
-                Excel-Datei mit Spalten: SKU, Name, Jan, Feb, Mrz, Apr, Mai, Jun, Jul, Aug, Sep, Okt, Nov (Verbrauchszahlen in kg)
+                Excel-Datei mit Spalten: SKU, Name, Jan, Feb, Mrz, Apr, Mai, Jun, Jul, Aug, Sep, Okt, Nov, Dez, Herkunft, Lieferant, Zwischenhändler, Lieferzeit (Verbrauchszahlen in kg)
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -715,7 +721,7 @@ export default function RawMaterialsPage() {
             <CardHeader>
               <CardTitle>Gespeicherte Verbrauchsdaten bearbeiten</CardTitle>
               <CardDescription>
-                Bearbeiten Sie Herkunft, Lieferant und Lieferzeit (in Monaten) direkt in der Tabelle. Änderungen werden automatisch gespeichert.
+                Bearbeiten Sie Herkunft, Lieferant, Zwischenhändler und Lieferzeit (in Monaten) direkt in der Tabelle. Änderungen werden automatisch gespeichert.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -732,6 +738,7 @@ export default function RawMaterialsPage() {
                         <th className="px-3 py-2 text-left">Name</th>
                         <th className="px-3 py-2 text-left">Herkunft</th>
                         <th className="px-3 py-2 text-left">Lieferant</th>
+                        <th className="px-3 py-2 text-left">Zwischenhändler</th>
                         <th className="px-3 py-2 text-left">Lieferzeit (Monate)</th>
                         <th className="px-3 py-2 text-right">Ø Verbrauch/Monat</th>
                       </tr>
@@ -775,6 +782,21 @@ export default function RawMaterialsPage() {
                                 className="h-8 w-32"
                                 disabled={savingId === item.id}
                                 placeholder="z.B. Müller GmbH"
+                              />
+                            </td>
+                            <td className="px-3 py-2">
+                              <Input
+                                value={item.zwischenhaendler || ''}
+                                onChange={(e) => {
+                                  setStoredConsumption(prev => 
+                                    prev.map(i => i.id === item.id ? { ...i, zwischenhaendler: e.target.value } : i)
+                                  )
+                                }}
+                                onBlur={(e) => saveField(item.id, 'zwischenhaendler', e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+                                className="h-8 w-32"
+                                disabled={savingId === item.id}
+                                placeholder="z.B. Großhandel AG"
                               />
                             </td>
                             <td className="px-3 py-2">

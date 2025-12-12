@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Validate allowed fields
-    const allowedFields = ['herkunft', 'lieferant', 'lieferzeit', 'name']
+    const allowedFields = ['herkunft', 'lieferant', 'zwischenhaendler', 'lieferzeit', 'name']
     if (!allowedFields.includes(field)) {
       return NextResponse.json({ error: 'Invalid field' }, { status: 400 })
     }
