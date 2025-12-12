@@ -212,18 +212,22 @@ export async function POST(req: NextRequest) {
       return arr.map(v => Math.min(upper, Math.max(lower, v)))
     }
 
-    // Helper: Calculate simple linear trend coefficient
-    const calculateTrend = (values: number[]): number => {
-      if (values.length < 3) return 0
-      const n = values.length
+    // Helper: Calculate simple linear trend coefficient using actual month indices
+    const calculateTrend = (dataPoints: { monthIdx: number, value: number }[]): number => {
+      if (dataPoints.length < 3) return 0
+      const n = dataPoints.length
       let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0
-      for (let i = 0; i < n; i++) {
-        sumX += i
-        sumY += values[i]
-        sumXY += i * values[i]
-        sumX2 += i * i
+      for (const point of dataPoints) {
+        const x = point.monthIdx // Use actual month index, not array position
+        const y = point.value
+        sumX += x
+        sumY += y
+        sumXY += x * y
+        sumX2 += x * x
       }
-      const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX)
+      const denom = n * sumX2 - sumX * sumX
+      if (denom === 0) return 0
+      const slope = (n * sumXY - sumX * sumY) / denom
       // Normalize slope by average to get percentage change per month
       const avg = sumY / n
       return avg > 0 ? slope / avg : 0
@@ -279,7 +283,7 @@ export async function POST(req: NextRequest) {
         const weightedMonthlyAvg = weightTot > 0 ? weightedSum / weightTot : 0
         
         // Calculate trend adjustment (cap at ±20% to avoid extreme predictions)
-        const trendCoeff = calculateTrend(values)
+        const trendCoeff = calculateTrend(monthlyData)
         const trendAdjustment = Math.max(-0.20, Math.min(0.20, trendCoeff * 3)) // 3 months projection
         
         // Convert to daily usage

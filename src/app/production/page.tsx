@@ -585,7 +585,7 @@ export default function ProductionPage() {
                     <input id="hideFallback" type="checkbox" className="h-4 w-4" checked={hideFallback} onChange={(e) => setHideFallback(e.target.checked)} />
                     <label htmlFor="hideFallback">Fallback-Produkte ausblenden</label>
                     <span className="inline-block w-px h-5 bg-gray-200" />
-                    <span>Nur „Zu Produzieren“</span>
+                    <span>Nur Zu Produzieren</span>
                     <input id="onlyProduce" type="checkbox" className="h-4 w-4" checked={onlyProduce} onChange={(e) => setOnlyProduce(e.target.checked)} />
                   </div>
                   <Button variant="outline" onClick={exportResults}>Export CSV</Button>
