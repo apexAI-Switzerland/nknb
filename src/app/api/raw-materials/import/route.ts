@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
       const lieferant = String(get(['lieferant', 'supplier', 'vendor']) || '').trim() || null
       const lieferzeit = String(get(['lieferzeit', 'leadtime', 'lead_time', 'lead time']) || '').trim() || null
 
-      // Parse month values
+      // Initialize record with all months set to null for consistent data structure
       const record: any = {
         sku,
         name: name || null,
@@ -89,10 +89,23 @@ export async function POST(req: NextRequest) {
         herkunft,
         lieferant,
         lieferzeit,
+        // Initialize all 12 months to null
+        jan: null,
+        feb: null,
+        mrz: null,
+        apr: null,
+        mai: null,
+        jun: null,
+        jul: null,
+        aug: null,
+        sep: null,
+        okt: null,
+        nov: null,
+        dez: null,
         updated_at: new Date().toISOString()
       }
 
-      // Map all month columns
+      // Map month columns from input - overwrite nulls with actual values
       for (const [originalKey, key] of Object.entries(keys)) {
         const normalizedKey = originalKey.toLowerCase().trim()
         const monthKey = monthMap[normalizedKey]
